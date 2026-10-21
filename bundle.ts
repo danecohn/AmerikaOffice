@@ -1,6 +1,6 @@
 import {readdir} from 'node:fs/promises';
 const assets:Record<string,{type:string,data:string}>={};
-const mime:Record<string,string>={html:'text/html; charset=utf-8',css:'text/css; charset=utf-8',js:'text/javascript; charset=utf-8',svg:'image/svg+xml',ttf:'font/ttf',webmanifest:'application/manifest+json',txt:'text/plain; charset=utf-8'};
+const mime:Record<string,string>={html:'text/html; charset=utf-8',css:'text/css; charset=utf-8',js:'text/javascript; charset=utf-8',svg:'image/svg+xml',ttf:'font/ttf',woff2:'font/woff2',webmanifest:'application/manifest+json',txt:'text/plain; charset=utf-8'};
 for(const folder of ['public','templates'])for(const name of await readdir(folder)){
  const f=Bun.file(folder+'/'+name),ext=name.split('.').pop()||'';
  assets[(folder==='public'?'/':'/templates/')+name]={type:mime[ext]||'application/octet-stream',data:Buffer.from(await f.arrayBuffer()).toString('base64')};

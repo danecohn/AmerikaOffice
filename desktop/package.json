@@ -1,0 +1,64 @@
+{
+  "name": "amerika-office-desktop",
+  "productName": "Amerika Office",
+  "version": "0.1.0",
+  "description": "Amerika LLC\u2019s desktop client for its hosted collaborative office",
+  "author": "Amerika LLC",
+  "license": "AGPL-3.0-only",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder"
+  },
+  "build": {
+    "appId": "com.amerika.office",
+    "productName": "Amerika Office",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.cjs",
+      "assets/**",
+      "LICENSE"
+    ],
+    "artifactName": "AmerikaOffice-${os}-${arch}.${ext}",
+    "linux": {
+      "target": [
+        "tar.gz"
+      ],
+      "category": "Office",
+      "icon": "assets/icon.png",
+      "executableName": "amerika-office"
+    },
+    "win": {
+      "target": [
+        "zip"
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "category": "public.app-category.productivity",
+      "icon": "assets/icon.icns",
+      "identity": null
+    },
+    "extraResources": [
+      {
+        "from": "assets/icon.png",
+        "to": "icon.png"
+      }
+    ],
+    "extraFiles": [
+      {
+        "from": "install-linux.sh",
+        "to": "install-linux.sh"
+      }
+    ]
+  },
+  "devDependencies": {
+    "electron": "44.9.2",
+    "electron-builder": "26.15.3"
+  }
+}

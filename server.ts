@@ -59,6 +59,7 @@ export function createOffice(options:any={}){
  const socialCall=async(path:string,data:any)=>{const res=await net(social+'/api/'+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data),signal:AbortSignal.timeout(15000)});const v=await res.json() as any;if(!res.ok)fail(res.status>=500?502:res.status,v.error||'Amerika account sign-in is unavailable.');return v;};
  async function handle(req:Request){
   const url=new URL(req.url),path=url.pathname,method=req.method;
+  if(path==='/downloads')return Response.redirect('https://www.amerika.social/downloads/office',302);
   if(path==='/healthz')return json({ok:true,product:'Amerika Office'});
   if(path==='/api/me'&&method==='GET'){const u=session(req);return json({user:u||null,docsUrl:docs,maxFileBytes:maxFile,quotaBytes:quota});}
   if(path==='/api/auth/start'&&method==='POST'){

@@ -1,0 +1,73 @@
+name: Build and publish Office desktop downloads
+on:
+  push:
+    branches: [main]
+    paths: [desktop/**, .github/workflows/desktop.yml]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: office-desktop-release
+  cancel-in-progress: false
+jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - name: Prepare early access release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release view desktop-v0.1.0 >/dev/null 2>&1 || gh release create desktop-v0.1.0 --target "$GITHUB_SHA" --title "Amerika Office Desktop 0.1.0 · Early access" --notes "Desktop client for Amerika LLC's self-hosted collaborative Office. Choose your OS and architecture. Editing and collaboration require a connection to the hosted service. Development packages are unsigned and not notarized." --prerelease
+  package:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {runner: ubuntu-24.04, os: linux, arch: x64}
+          - {runner: ubuntu-24.04-arm, os: linux, arch: arm64}
+          - {runner: windows-2025, os: win, arch: x64}
+          - {runner: windows-11-arm, os: win, arch: arm64}
+          - {runner: macos-15-intel, os: mac, arch: x64}
+          - {runner: macos-15, os: mac, arch: arm64}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: desktop
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - run: npm ci
+      - name: Ensure the pinned Electron runtime is downloaded
+        run: node node_modules/electron/install.js
+      - name: Build desktop package
+        run: npm run dist -- --${{ matrix.os }} --${{ matrix.arch }} --publish never
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Smoke test native desktop client (Linux)
+        if: runner.os == 'Linux'
+        run: xvfb-run -a python smoke.py
+      - name: Smoke test native desktop client (Windows and macOS)
+        if: runner.os != 'Linux'
+        run: python smoke.py
+      - name: Publish checksummed downloads
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import hashlib
+          from pathlib import Path
+          for p in Path('release').glob('AmerikaOffice-*'):
+              if p.is_file() and not p.name.endswith(('.sha256','.yml','.yaml','.blockmap')):
+                  p.with_name(p.name+'.sha256').write_text(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.name+'\n')
+          PY
+          gh release upload desktop-v0.1.0 release/AmerikaOffice-*.* --clobber
