@@ -52,6 +52,14 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.13'
+      - name: Configure Chromium sandbox on Linux runner
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sandbox=$(find release -name chrome-sandbox -type f -print -quit)
+          test -n "$sandbox"
+          sudo chown root:root "$sandbox"
+          sudo chmod 4755 "$sandbox"
       - name: Smoke test native desktop client (Linux)
         if: runner.os == 'Linux'
         run: xvfb-run -a python smoke.py
