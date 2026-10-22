@@ -1,13 +1,34 @@
-# Amerika Office
+# Makk Office
 
-Amerika LLC’s self-hosted workspace for documents, spreadsheets and presentations. The charcoal-and-crimson portal uses ONLYOFFICE Docs Community Edition and retains the editor’s branding and legal notices.
+Makk Office is the Cherry Blossom LLC fork/integration of **Euro-Office** for
+Makk OS. Its document, spreadsheet and presentation apps are Paper, Digits and
+Slides. The desktop upstream is pinned in `upstream/euro-office.lock.json`;
+`scripts/checkout-euro-office.py` checks out that source and applies the downstream
+company/product build branding. It does not fetch ONLYOFFICE as the direct upstream.
+Euro-Office's upstream copyright, attribution and AGPL notices remain intact.
+
+The installed ARM64 preview currently uses Euro-Office Desktop Editors 9.3.5-2
+with launch integration; a complete new native source build has not yet been
+validated. Run the checkout script with a new destination and `--with-submodules`
+to prepare a source build. Do not describe the existing Electron hosted-service
+client as the native offline editor.
+
+The hosted editor Dockerfile now selects Euro-Office Document Server 9.3.1.
+Migrating an existing service requires backing up its documents, runtime secrets
+and volumes, and testing callbacks and reopening before deployment. This source
+change does not migrate a running service or its old volume layout.
+
+---
+
+
+Cherry Blossom LLC’s self-hosted workspace for documents, spreadsheets and presentations. The charcoal-and-crimson portal uses Euro-Office Document Server and retains the editor’s branding and legal notices.
 
 ## What works
 
 - Public sign-in and account creation through Amerika Social’s browser approval flow. Office immediately revokes the temporary Social token and maintains its own seven-day session. Social passwords and access tokens are not stored in Office.
 - Private DOCX, XLSX and PPTX creation, document uploads, download, rename and deletion.
 - Expiring seven-day invitation links with view or edit access. Accepted membership persists until the owner revokes sharing. Revocation stops future opens; it does not close already-open editors or recall downloaded copies.
-- Live co-editing through a self-hosted ONLYOFFICE Docs instance, signed editor configs and callbacks, persistent file storage, saved version downloads, and explicit storage limits.
+- Live co-editing through a self-hosted Euro-Office Document Server instance, signed editor configs and callbacks, persistent file storage, saved version downloads, and explicit storage limits.
 
 ## Run
 
@@ -25,7 +46,7 @@ bun start
 
 `DATA_DIR` defaults to `./data`. Deploy the included Dockerfile to Railway with one persistent volume at `/data`. The health check is `/healthz`. Keep exactly one replica: this release uses SQLite and local persistent files. The Docker container runs as root to initialize Railway’s root-owned mounted volume.
 
-Use the official `onlyoffice/documentserver:10.0.0` image for a separate editor service, with JWT enabled and the matching `JWT_SECRET`. Set `JWT_IN_BODY=true`, `EXAMPLE_ENABLED=false`, `ALLOW_PRIVATE_IP_ADDRESS=false`, and `ALLOW_META_IP_ADDRESS=false`. Mount editor cache persistently at `/var/lib/onlyoffice`, use two nginx workers with 1024 connections, and provision at least 4 GB RAM. Public HTTPS origins are used for file transfer. `/healthcheck` should return `true` and unsigned conversion requests should be rejected. If the image does not publish the exact tag for your platform, pin a verified image digest from the deployed release.
+Use the official `ghcr.io/euro-office/documentserver:9.3.1` image for a separate editor service, with JWT enabled and the matching `JWT_SECRET`. Set `JWT_IN_BODY=true`, `EXAMPLE_ENABLED=false`, `ALLOW_PRIVATE_IP_ADDRESS=false`, and `ALLOW_META_IP_ADDRESS=false`. Mount editor cache persistently at `/var/lib/euro-office/documentserver`, use two nginx workers with 1024 connections, and provision at least 4 GB RAM. Public HTTPS origins are used for file transfer. `/healthcheck` should return `true` and unsigned conversion requests should be rejected. If the image does not publish the exact tag for your platform, pin a verified image digest from the deployed release.
 
 ### Configuration
 

@@ -1,8 +1,5 @@
 name: Build and publish Office desktop downloads
 on:
-  push:
-    branches: [main]
-    paths: [desktop/**, .github/workflows/desktop.yml]
   workflow_dispatch:
 permissions:
   contents: write
@@ -17,7 +14,7 @@ jobs:
       - name: Prepare early access release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release view desktop-v0.1.0 >/dev/null 2>&1 || gh release create desktop-v0.1.0 --target "$GITHUB_SHA" --title "Amerika Office Desktop 0.1.0 · Early access" --notes "Desktop client for Amerika LLC's self-hosted collaborative Office. Choose your OS and architecture. Editing and collaboration require a connection to the hosted service. Development packages are unsigned and not notarized." --prerelease
+        run: gh release view desktop-v0.1.0 >/dev/null 2>&1 || gh release create desktop-v0.1.0 --target "$GITHUB_SHA" --title "Makk Office Desktop 0.1.0 · Early access" --notes "Desktop client for Amerika LLC's self-hosted collaborative Office. Choose your OS and architecture. Editing and collaboration require a connection to the hosted service. Development packages are unsigned and not notarized." --prerelease
   package:
     needs: prepare
     strategy:
@@ -74,8 +71,8 @@ jobs:
           python - <<'PY'
           import hashlib
           from pathlib import Path
-          for p in Path('release').glob('AmerikaOffice-*'):
+          for p in Path('release').glob('MakkOffice-*'):
               if p.is_file() and not p.name.endswith(('.sha256','.yml','.yaml','.blockmap')):
                   p.with_name(p.name+'.sha256').write_text(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.name+'\n')
           PY
-          gh release upload desktop-v0.1.0 release/AmerikaOffice-*.* --clobber
+          gh release upload desktop-v0.1.0 release/MakkOffice-*.* --clobber

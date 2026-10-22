@@ -1,0 +1,14 @@
+{
+  "desktop": {
+    "repository": "https://github.com/Euro-Office/DesktopEditors.git",
+    "commit": "0d20c7d8087daae8e29501006be7ed23993bb3ee",
+    "tag": "v9.3.5-2",
+    "license": "AGPL-3.0",
+    "method": "Maintained Euro-Office source checkout plus downstream build branding"
+  },
+  "server": {
+    "image": "ghcr.io/euro-office/documentserver:9.3.1",
+    "source": "https://github.com/Euro-Office/DocumentServer",
+    "license": "AGPL-3.0"
+  }
+}

@@ -1,9 +1,9 @@
 {
   "name": "amerika-office-desktop",
-  "productName": "Amerika Office",
+  "productName": "Makk Office",
   "version": "0.1.0",
-  "description": "Amerika LLC\u2019s desktop client for its hosted collaborative office",
-  "author": "Amerika LLC",
+  "description": "Cherry Blossom LLC\u2019s desktop client for its hosted collaborative office",
+  "author": "Cherry Blossom LLC",
   "license": "AGPL-3.0-only",
   "main": "main.cjs",
   "scripts": {
@@ -12,7 +12,7 @@
   },
   "build": {
     "appId": "com.amerika.office",
-    "productName": "Amerika Office",
+    "productName": "Makk Office",
     "directories": {
       "output": "release"
     },
@@ -21,7 +21,7 @@
       "assets/**",
       "LICENSE"
     ],
-    "artifactName": "AmerikaOffice-${os}-${arch}.${ext}",
+    "artifactName": "MakkOffice-${os}-${arch}.${ext}",
     "linux": {
       "target": [
         "tar.gz"
