@@ -16,7 +16,7 @@ export function verifyJwt(value:string,secret:string){
  const p=JSON.parse(Buffer.from(parts[1],'base64url').toString());if(p.exp&&p.exp<Date.now()/1000)throw Error('Expired signature');return p;
 }
 export function createOffice(options:any={}){
- const env=options.env||process.env,dir=env.DATA_DIR||'./data',origin=env.PUBLIC_ORIGIN||'http://localhost:3000',docs=env.DOCS_URL||'https://amerikadocs-production.up.railway.app',social=env.SOCIAL_ORIGIN||'https://altstack.io';
+ const env=options.env||process.env,dir=env.DATA_DIR||'./data',origin=env.PUBLIC_ORIGIN||'http://localhost:3000',docs=env.DOCS_URL||'https://editor.altstack.org',social=env.SOCIAL_ORIGIN||'https://altstack.org';
  const secret=env.OFFICE_SECRET,editorSecret=env.JWT_SECRET;
  if(!secret||secret.length<32||!editorSecret||editorSecret.length<32)throw Error('Set independent OFFICE_SECRET and JWT_SECRET, at least 32 characters each.');
  mkdirSync(join(dir,'files'),{recursive:true});
@@ -40,7 +40,8 @@ export function createOffice(options:any={}){
  const doc=(id:string)=>q('SELECT * FROM documents WHERE id=? AND deleted=0').get(id) as any||fail(404,'Document not found.');
  const access=(id:string,u:any,write=false)=>{const d=doc(id);const role=d.owner===u.id?'owner':(q('SELECT role FROM members WHERE doc=? AND user=?').get(id,u.id) as any)?.role;if(!role||(write&&role==='view'))fail(403,'You do not have permission for this document.');return {...d,role};};
  const owner=(id:string,u:any)=>{const d=access(id,u);if(d.role!=='owner')fail(403,'Only the owner can change sharing or delete this document.');return d;};
- const csrf=(req:Request)=>{if(req.headers.get('origin')!==origin)fail(403,'Request origin rejected.');};
+ const browserOrigins=new Set([origin,...(env.BROWSER_ORIGIN_ALIASES||'').split(',').map((v:string)=>v.trim()).filter(Boolean)]);
+ const csrf=(req:Request)=>{if(!browserOrigins.has(req.headers.get('origin')||''))fail(403,'Request origin rejected.');};
  const rate=(key:string,max=60)=>{const now=Date.now();for(const[k,v]of rates)if(v.until<now)rates.delete(k);const r=rates.get(key)||{n:0,until:now+3600000};r.n++;rates.set(key,r);if(r.n>max)fail(429,'Too many requests. Please try again later.');};
  const body=async(req:Request,limit=65536)=>{const raw=await req.text();if(Buffer.byteLength(raw)>limit)fail(413,'Request too large.');try{return JSON.parse(raw);}catch{fail(400,'Invalid JSON.');}};
  const event=(d:string|null,u:string|null,a:string)=>q('INSERT INTO events(doc,user,action,created) VALUES(?,?,?,?)').run(d,u,a,Date.now());
@@ -56,10 +57,11 @@ export function createOffice(options:any={}){
  const kind=(ext:string)=>['xlsx','xls','ods','csv'].includes(ext)?'cell':['pptx','ppt','odp'].includes(ext)?'slide':ext==='pdf'?'pdf':'word';
  const sign=(claims:any)=>jwt({...claims,exp:Math.floor(Date.now()/1000)+24*3600},secret);
  const verify=(value:string,scope:string,id:string)=>{let c:any;try{c=verifyJwt(value,secret);}catch{fail(403,'This document link has expired. Reopen it from Office.');}if(c.scope!==scope||c.id!==id)fail(403,'Invalid document link.');return c;};
- const socialCall=async(path:string,data:any)=>{const res=await net(social+'/api/'+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data),signal:AbortSignal.timeout(15000)});const v=await res.json() as any;if(!res.ok)fail(res.status>=500?502:res.status,v.error||'Amerika account sign-in is unavailable.');return v;};
+ const socialCall=async(path:string,data:any)=>{const res=await net(social+'/api/'+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data),signal:AbortSignal.timeout(15000)});const v=await res.json() as any;if(!res.ok)fail(res.status>=500?502:res.status,v.error||'AltStack account sign-in is unavailable.');return v;};
  async function handle(req:Request){
   const url=new URL(req.url),path=url.pathname,method=req.method;
-  if(path==='/downloads')return Response.redirect('https://altstack.io/downloads/office',302);
+  if(['GET','HEAD'].includes(method)&&url.hostname==='drive.altstack.org'&&!path.startsWith('/api/')&&!path.startsWith('/files/')&&!path.startsWith('/callbacks/'))return Response.redirect(origin+url.pathname+url.search,302);
+  if(path==='/downloads')return Response.redirect('https://altstack.org/downloads/office',302);
   if(path==='/healthz')return json({ok:true,product:'AltOffice'});
   if(path==='/api/me'&&method==='GET'){const u=session(req);return json({user:u||null,docsUrl:docs,maxFileBytes:maxFile,quotaBytes:quota});}
   if(path==='/api/auth/start'&&method==='POST'){
@@ -110,7 +112,7 @@ export function createOffice(options:any={}){
    if(action==='versions'&&method==='GET')return json({versions:q('SELECT revision,size,created FROM versions WHERE doc=? ORDER BY revision DESC').all(id)});
    if(action==='config'&&method==='GET'){
     const key=id+'-'+d.epoch,edit=d.role!=='view'&&['docx','xlsx','pptx'].includes(d.ext);
-    const config={document:{fileType:d.ext,key,title:d.title+'.'+d.ext,url:origin+'/files/'+id+'?token='+sign({scope:'download',id,key}),permissions:{edit,download:true,print:true,comment:edit,review:edit}},documentType:kind(d.ext),editorConfig:{mode:edit?'edit':'view',lang:'en',callbackUrl:origin+'/callbacks/'+id+'?token='+sign({scope:'callback',id,key}),user:{id:u.id,name:u.name},coEditing:{mode:'fast',change:true},customization:{uiTheme:'theme-dark',forcesave:true,autosave:true,goback:{url:origin},help:true,feedback:false}},type:'desktop'};
+    const config={document:{fileType:d.ext,key,title:d.title+'.'+d.ext,url:origin+'/files/'+id+'?token='+sign({scope:'download',id,key}),permissions:{edit,download:true,print:true,comment:edit,review:edit}},documentType:kind(d.ext),editorConfig:{mode:edit?'edit':'view',lang:'en',callbackUrl:origin+'/callbacks/'+id+'?token='+sign({scope:'callback',id,key}),user:{id:u.id,name:u.name},coEditing:{mode:'fast',change:true},customization:{uiTheme:'theme-light',forcesave:true,autosave:true,goback:{url:origin},help:true,feedback:false}},type:'desktop'};
     return json({config:{...config,token:jwt(config,editorSecret)},docsUrl:docs,document:publicDoc(d)});
    }
    if(action==='share'){
@@ -135,7 +137,7 @@ export function createOffice(options:any={}){
    if(payload.key!==c.key||b.key!==c.key||payload.status!==b.status||payload.url!==b.url)fail(403,'Editor callback does not match its signature.');
    const d=doc(id);if(c.key!==id+'-'+d.epoch)return json({error:0});
    if([2,6].includes(b.status)){
-    const target=new URL(payload.url);if(target.origin!==new URL(docs).origin)fail(403,'Untrusted editor download URL.');
+    const target=new URL(payload.url);if(![docs,env.DOCS_PREVIOUS_URL].filter(Boolean).some((value:string)=>target.origin===new URL(value).origin))fail(403,'Untrusted editor download URL.');
     const response=await net(target,{redirect:'error',signal:AbortSignal.timeout(45000)});if(!response.ok)fail(502,'Editor save download failed.');
     if(Number(response.headers.get('content-length')||0)>maxFile)fail(413,'Edited file too large.');
     const chunks:Uint8Array[]=[];let size=0;for await(const chunk of response.body as any){size+=chunk.byteLength;if(size>maxFile)fail(413,'Edited file too large.');chunks.push(chunk);}
