@@ -1,17 +1,28 @@
-#!/bin/bash
-set -euo pipefail
-export NGINX_WORKER_PROCESSES="${NGINX_WORKER_PROCESSES:-2}"
-export NGINX_WORKER_CONNECTIONS="${NGINX_WORKER_CONNECTIONS:-1024}"
-rm -f /etc/nginx/sites-enabled/default /etc/supervisor/conf.d/ds-adminpanel.conf
-sed -i 's/COMPANY_NAME/euro-office/g' /etc/supervisor/conf.d/*.conf
-store=/var/lib/euro-office/documentserver/makk-runtime-data
+#!/bin/sh
+set -eu
+# This service uses a NEW volume; the old editor stays running for existing sessions.
+store="${ALTOFFICE_DATA_DIR:-/data}"
 mkdir -p "$store"
-if [ ! -L /var/www/euro-office/Data ]; then
- cp -an /var/www/euro-office/Data/. "$store/"
- rm -rf /var/www/euro-office/Data
- ln -s "$store" /var/www/euro-office/Data
-fi
-chown -R ds:ds "$store"
-(sleep 20; nginx -t; supervisorctl status) &
-echo 'AltOffice editor startup: persistent state and nginx prepared.'
-exec /app/ds/run-document-server.sh "$@"
+persist() {
+ target="$1"; name="$2"
+ if [ -L "$target" ]; then return; fi
+ if [ ! -e "$store/$name" ]; then
+  mkdir -p "$store/$name"
+  if [ -d "$target" ]; then cp -a "$target/." "$store/$name/"; fi
+ fi
+ if [ -e "$target" ]; then mv "$target" "$target.image-default"; fi
+ mkdir -p "$(dirname "$target")"
+ ln -s "$store/$name" "$target"
+}
+persist /var/www/euro-office/Data secrets
+persist /var/lib/euro-office/documentserver cache
+persist /var/lib/postgresql postgresql
+chown -R ds:ds "$store/secrets" "$store/cache"
+chown -R postgres:postgres "$store/postgresql"
+# Remove Debian's default site, which can retain an IPv6 listener on Railway.
+rm -f /etc/nginx/sites-enabled/default /etc/nginx/conf.d/default.conf
+# Print nginx's actual error if upstream startup fails.
+sed -i 's/^service nginx start$/service nginx start || { nginx -t; exit 1; }/' /entrypoint.sh
+echo 'AltOffice: Euro-Office editor with persistent state and upstream notices.'
+exec /entrypoint.sh "$@"
+
