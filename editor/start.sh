@@ -19,5 +19,10 @@ persist /var/lib/euro-office/documentserver cache
 persist /var/lib/postgresql postgresql
 chown -R ds:ds "$store/secrets" "$store/cache"
 chown -R postgres:postgres "$store/postgresql"
+# Remove Debian's default site, which can retain an IPv6 listener on Railway.
+rm -f /etc/nginx/sites-enabled/default /etc/nginx/conf.d/default.conf
+# Print nginx's actual error if upstream startup fails.
+sed -i 's/^service nginx start$/service nginx start || { nginx -t; exit 1; }/' /entrypoint.sh
 echo 'AltOffice: Euro-Office editor with persistent state and upstream notices.'
 exec /entrypoint.sh "$@"
+
