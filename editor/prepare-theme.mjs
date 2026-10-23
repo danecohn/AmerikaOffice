@@ -3,7 +3,7 @@ import {join} from 'node:path';
 const root=process.argv[2];if(!root)throw Error('Supply the Euro-Office web-apps source directory.');
 const theme=join(root,'theme/altoffice');cpSync(join(root,'theme/euro-office'),theme,{recursive:true});
 const config=JSON.parse(readFileSync(join(theme,'meta/config.json'),'utf8'));
-Object.assign(config,{company_name:'AltStack LLC',publisher_name:'AltStack LLC',publisher_url:'https://altstack.io',app_title:'AltOffice',support_url:'https://github.com/danecohn/AmerikaOffice/issues',help_url:'https://github.com/danecohn/AmerikaOffice',attribution:'AltOffice is based on Euro-Office, which is based on ONLYOFFICE by Ascensio System SIA.'});
+Object.assign(config,{company_name:'AltStack LLC',publisher_name:'AltStack LLC',publisher_url:'https://altstack.org',app_title:'AltOffice',support_url:'https://github.com/danecohn/AmerikaOffice/issues',help_url:'https://github.com/danecohn/AmerikaOffice',attribution:'AltOffice is based on Euro-Office, which is based on ONLYOFFICE by Ascensio System SIA.'});
 writeFileSync(join(theme,'meta/config.json'),JSON.stringify(config,null,2));
 const aboutPath=join(theme,'meta/about.json'),about=JSON.parse(readFileSync(aboutPath,'utf8'));
 about.blocks.unshift({text:'AltOffice is the AltStack LLC edition of Euro-Office. Modified on {buildDate}. AltStack LLC is not affiliated with Euro-Office or Ascensio System SIA.'});
