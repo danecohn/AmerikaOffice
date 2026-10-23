@@ -44,6 +44,15 @@ build=root/'scripts/build-frontend-prod.mjs'
 text=build.read_text('utf-8').replace("COMPANY_NAME: 'Euro-Office'","COMPANY_NAME: 'AltStack LLC'").replace("PRODUCT_NAME: 'Euro-Office Lite'","PRODUCT_NAME: 'AltOffice'").replace("PUBLISHER_NAME: 'Euro-Office contributors'","PUBLISHER_NAME: 'AltStack LLC'")
 # Retain the original APP_COPYRIGHT and upstream About/legal blocks.
 build.write_text(text,encoding='utf-8')
+theme=root/'src/web-apps/theme/euro-office'
+if theme.exists():
+ for p in theme.rglob('*.svg'):
+  if 'logo' in p.name.lower(): shutil.copyfile(overlay/'desktop/assets/logo.svg',p)
+ config=theme/'meta/config.json'
+ if config.exists():
+  data=json.loads(config.read_text())
+  data.update(company_name='AltStack LLC',publisher_name='AltStack LLC',app_title='AltOffice')
+  config.write_text(json.dumps(data,indent=2)+'\n')
 for filename in ['scripts/get-x2t-ci.sh','scripts/get-x2t-ci.ps1']:
  p=root/filename;text=p.read_text('utf-8')
  text=text.replace('REPO="${GITHUB_REPOSITORY:-delmarguillen/euro-office-lite}"','REPO="delmarguillen/euro-office-lite"').replace('$repo = $env:GITHUB_REPOSITORY','$repo = "delmarguillen/euro-office-lite"')
