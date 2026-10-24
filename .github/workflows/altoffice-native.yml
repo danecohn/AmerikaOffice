@@ -1,0 +1,624 @@
+name: AltOffice native desktop installers
+permissions:
+  contents: read
+env:
+  RUST_BACKTRACE: '1'
+concurrency:
+  group: altoffice-native-desktop
+  cancel-in-progress: true
+jobs:
+  build-frontend:
+    runs-on: ubuntu-24.04
+    steps:
+    - name: Checkout pinned Euro-Office desktop host
+      uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      with:
+        repository: delmarguillen/euro-office-lite
+        ref: 41558fdbff7b5248f5f302b3b2b6a189178a447f
+        submodules: recursive
+        persist-credentials: false
+    - name: Checkout AltStack overlay
+      uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      with:
+        path: .altstack-source
+        persist-credentials: false
+    - name: Apply AltOffice identity
+      shell: bash
+      run: python .altstack-source/desktop-native/prepare.py
+    - name: Setup Node.js
+      uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+      with:
+        node-version: 20
+        cache: npm
+        cache-dependency-path: 'package-lock.json
+
+          src/sdkjs/build/package-lock.json
+
+
+          .altstack-source/desktop-native/README.md'
+    - name: Setup Java for Closure Compiler
+      uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9
+      with:
+        distribution: temurin
+        java-version: '21'
+    - name: Install frontend build dependencies
+      run: 'npm ci
+
+        npm ci --prefix src/sdkjs/build
+
+        '
+    - name: Prepare fonts
+      run: 'pip3 install Pillow --quiet --break-system-packages || pip3 install Pillow --quiet
+
+        chmod +x scripts/prepare-fonts.sh
+
+        bash scripts/prepare-fonts.sh
+
+        '
+    - name: Build and validate production frontend
+      run: 'set -o pipefail
+
+        npm run build:frontend:prod 2>&1 | tee /tmp/frontend-build.log
+
+        '
+    - name: Collect frontend diagnostics
+      if: always()
+      run: "{\n  echo \"event=${{ github.event_name }} ref=${{ github.ref }} sha=${{ github.sha }}\"\n  node --version\n  npm --version\n  java\
+        \ -version\n  git submodule status src/sdkjs src/web-apps\n  if [ -d src-dist ]; then\n    echo \"File count: $(find src-dist -type f\
+        \ | wc -l)\"\n    echo \"Total size: $(du -sh src-dist | cut -f1)\"\n    echo \"Largest production assets:\"\n    find src-dist -type\
+        \ f -printf '%s %p\\n' | sort -nr | head -30\n  else\n    echo \"src-dist was not produced\"\n  fi\n} 2>&1 | tee /tmp/frontend-diagnostics.log\n"
+    - name: Upload production frontend
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with:
+        name: production-frontend
+        path: src-dist/
+        if-no-files-found: error
+        retention-days: 1
+    - name: Upload frontend diagnostics
+      if: always()
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with:
+        name: frontend-diagnostics-${{ github.run_attempt }}
+        path: '/tmp/frontend-build.log
+
+          /tmp/frontend-diagnostics.log
+
+          '
+        if-no-files-found: warn
+        retention-days: 7
+    timeout-minutes: 120
+  build-windows:
+    needs: build-frontend
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+        - x86_64-pc-windows-msvc
+        - aarch64-pc-windows-msvc
+    steps:
+    - name: Checkout pinned Euro-Office desktop host
+      uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      with:
+        repository: delmarguillen/euro-office-lite
+        ref: 41558fdbff7b5248f5f302b3b2b6a189178a447f
+        submodules: recursive
+        persist-credentials: false
+    - name: Checkout AltStack overlay
+      uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      with:
+        path: .altstack-source
+        persist-credentials: false
+    - name: Apply AltOffice identity
+      shell: bash
+      run: python .altstack-source/desktop-native/prepare.py
+    - name: Setup Node.js
+      uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+      with:
+        node-version: 20
+        cache: npm
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30
+      with:
+        targets: ${{ matrix.target }}
+    - name: Cache Cargo
+      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+      with:
+        path: '~/.cargo/registry
+
+          ~/.cargo/git
+
+          src-tauri/target
+
+          '
+        key: altstack-cargo-${{ startsWith(github.ref, 'refs/tags/v') && 'release' || 'ci' }}-${{ runner.os }}-${{ matrix.target }}-${{ hashFiles('src-tauri/Cargo.lock',
+          'src-tauri/Cargo.toml') }}
+        restore-keys: altstack-cargo-${{ startsWith(github.ref, 'refs/tags/v') && 'release' || 'ci' }}-${{ runner.os }}-${{ matrix.target }}-
+    - name: Install npm dependencies
+      run: npm ci --omit=dev
+    - name: Download production frontend
+      uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+      with:
+        name: production-frontend
+        path: src-dist/
+    - name: Validate production frontend
+      run: npm run validate:frontend:prod
+    - name: Download x2t binaries
+      shell: pwsh
+      run: .\scripts\get-x2t-ci.ps1
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Prepare DoctRenderer resources
+      shell: bash
+      env:
+        DOCTRENDERER_SDKJS_TAG: v9.4.0.129
+        DOCTRENDERER_SDKJS_REMOTE: https://github.com/ONLYOFFICE/sdkjs.git
+        DOCTRENDERER_SDKJS_COMMIT: 75b53d504bfd81bfa35d59bb57dd9e56f7c9235d
+      run: 'set -o pipefail
+
+        echo "::group::Copy fonts to binaries"
+
+        mkdir -p src-tauri/binaries/fonts
+
+        cp src/fonts/*.ttf src-tauri/binaries/fonts/
+
+        cp src-dist/sdkjs/common/AllFonts.js src-tauri/binaries/AllFonts.js
+
+        echo "Fonts copied: $(ls src-tauri/binaries/fonts/*.ttf | wc -l)"
+
+        echo "::endgroup::"
+
+
+        echo "::group::Compile sdkjs for DoctRenderer"
+
+        chmod +x scripts/compile-doctrenderer-sdkjs.sh
+
+        export DOCTRENDERER_STAGING="$RUNNER_TEMP/doctrenderer-sdkjs"
+
+        export ALLFONTS_SOURCE="$GITHUB_WORKSPACE/src-dist/sdkjs/common/AllFonts.js"
+
+        bash scripts/compile-doctrenderer-sdkjs.sh 2>&1 | tee "$RUNNER_TEMP/doctrenderer-build.log"
+
+        echo "::endgroup::"
+
+        echo "::group::Create DoctRenderer directory structure"
+
+        DOCTRENDERER_SDKJS="$DOCTRENDERER_STAGING" bash scripts/prepare-doctrenderer.sh
+
+        echo "::endgroup::"
+
+        '
+    - name: Rename x2t sidecar for target
+      if: matrix.target == 'aarch64-pc-windows-msvc'
+      shell: pwsh
+      run: '$bin = "src-tauri\binaries"
+
+        Copy-Item "$bin\x2t-x86_64-pc-windows-msvc.exe" "$bin\x2t-aarch64-pc-windows-msvc.exe"
+
+        Remove-Item "$bin\x2t-x86_64-pc-windows-msvc.exe"
+
+        '
+    - name: Build Tauri installer
+      shell: pwsh
+      run: 'echo "::group::tauri-build"
+
+        npx tauri build --target ${{ matrix.target }} 2>&1 | Tee-Object -FilePath (Join-Path $env:TEMP "tauri-build.log")
+
+        echo "::endgroup::"
+
+        '
+    - name: Show installer info
+      shell: pwsh
+      run: "$nsisDir = \"src-tauri\\target\\${{ matrix.target }}\\release\\bundle\\nsis\"\nif (Test-Path $nsisDir) {\n  Get-ChildItem $nsisDir\
+        \ -Recurse | Select-Object Name, @{N='Size(MB)';E={[math]::Round($_.Length/1MB,2)}}\n} else {\n  Write-Host \"NSIS output directory not\
+        \ found at $nsisDir\"\n  Get-ChildItem \"src-tauri\\target\" -Directory | Select-Object Name\n}\n"
+    - name: Upload installer artifact
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with:
+        name: installer-${{ matrix.target }}
+        path: src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*.exe
+    - name: Upload logs on failure
+      if: failure()
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with:
+        name: build-logs-${{ matrix.target }}
+        path: '${{ runner.temp }}/doctrenderer-build.log
+
+          ${{ runner.temp }}/tauri-build.log
+
+          '
+    timeout-minutes: 120
+  build-macos:
+    needs: build-frontend
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+        - aarch64-apple-darwin
+        - x86_64-apple-darwin
+    steps:
+    - name: Checkout pinned Euro-Office desktop host
+      uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      with:
+        repository: delmarguillen/euro-office-lite
+        ref: 41558fdbff7b5248f5f302b3b2b6a189178a447f
+        submodules: recursive
+        persist-credentials: false
+    - name: Checkout AltStack overlay
+      uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      with:
+        path: .altstack-source
+        persist-credentials: false
+    - name: Apply AltOffice identity
+      shell: bash
+      run: python .altstack-source/desktop-native/prepare.py
+    - name: Setup Node.js
+      uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+      with:
+        node-version: 20
+        cache: npm
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30
+      with:
+        targets: ${{ matrix.target }}
+    - name: Cache Cargo
+      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+      with:
+        path: '~/.cargo/registry
+
+          ~/.cargo/git
+
+          src-tauri/target
+
+          '
+        key: altstack-cargo-${{ startsWith(github.ref, 'refs/tags/v') && 'release' || 'ci' }}-${{ runner.os }}-${{ matrix.target }}-${{ hashFiles('src-tauri/Cargo.lock',
+          'src-tauri/Cargo.toml') }}
+        restore-keys: altstack-cargo-${{ startsWith(github.ref, 'refs/tags/v') && 'release' || 'ci' }}-${{ runner.os }}-${{ matrix.target }}-
+    - name: Install npm dependencies
+      run: npm ci --omit=dev
+    - name: Download production frontend
+      uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+      with:
+        name: production-frontend
+        path: src-dist/
+    - name: Validate production frontend
+      run: npm run validate:frontend:prod
+    - name: Generate macOS icons
+      run: 'echo "::group::generate-icons"
+
+        python3 -m pip install Pillow --quiet --break-system-packages || python3 -m pip install Pillow --quiet
+
+        chmod +x scripts/generate-icons.sh
+
+        bash scripts/generate-icons.sh
+
+        echo "::endgroup::"
+
+        '
+    - name: Download x2t macOS binaries
+      run: 'chmod +x scripts/get-x2t-ci.sh
+
+        bash scripts/get-x2t-ci.sh ${{ matrix.target }}
+
+        '
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Fix x2t binary (rpath + ad-hoc re-sign)
+      run: "echo \"::group::Patch x2t rpath and re-sign\"\nX2T=\"src-tauri/binaries/x2t-${{ matrix.target }}\"\nif [ -f \"$X2T\" ]; then\n  install_name_tool\
+        \ -add_rpath \"@executable_path/../Resources/binaries\" \"$X2T\" 2>/dev/null || true\n  codesign --force --sign - \"$X2T\"\n  echo \"\
+        Updated rpaths:\"\n  otool -l \"$X2T\" | grep -A2 LC_RPATH\nfi\necho \"::endgroup::\"\n"
+    - name: Copy x2t to binaries for DoctRenderer PDF path
+      run: 'cp "src-tauri/binaries/x2t-${{ matrix.target }}" "src-tauri/binaries/x2t"
+
+        echo "x2t resource copy created ($(wc -c < src-tauri/binaries/x2t) bytes)"
+
+        '
+    - name: Prepare DoctRenderer resources
+      env:
+        DOCTRENDERER_SDKJS_TAG: v8.2.0.147
+        DOCTRENDERER_SDKJS_COMMIT: cfbea04cffefe72e1797ba4ed488771124d6e252
+      run: 'set -o pipefail
+
+        echo "::group::Copy fonts to binaries"
+
+        mkdir -p src-tauri/binaries/fonts
+
+        cp src/fonts/*.ttf src-tauri/binaries/fonts/
+
+        cp src-dist/sdkjs/common/AllFonts.js src-tauri/binaries/AllFonts.js
+
+        echo "Fonts copied: $(ls src-tauri/binaries/fonts/*.ttf | wc -l)"
+
+        echo "::endgroup::"
+
+
+        echo "::group::Compile sdkjs for DoctRenderer"
+
+        chmod +x scripts/compile-doctrenderer-sdkjs.sh
+
+        export DOCTRENDERER_STAGING="$RUNNER_TEMP/doctrenderer-sdkjs"
+
+        export ALLFONTS_SOURCE="$GITHUB_WORKSPACE/src-dist/sdkjs/common/AllFonts.js"
+
+        bash scripts/compile-doctrenderer-sdkjs.sh 2>&1 | tee /tmp/doctrenderer-build.log
+
+        echo "::endgroup::"
+
+        echo "::group::Create DoctRenderer directory structure"
+
+        chmod +x scripts/prepare-doctrenderer.sh
+
+        DOCTRENDERER_SDKJS="$DOCTRENDERER_STAGING" bash scripts/prepare-doctrenderer.sh
+
+        echo "::endgroup::"
+
+        '
+    - name: Build Tauri app
+      run: "set -o pipefail\nnpx tauri build \\\n  --target ${{ matrix.target }} \\\n  --config '{\"bundle\":{\"targets\":[\"app\",\"dmg\"],\"\
+        icon\":[\"icons/icon.icns\",\"icons/icon.png\",\"icons/128x128.png\",\"icons/32x32.png\"],\"resources\":[\"binaries/*.dylib\",\"binaries/*.config\"\
+        ,\"binaries/*.js\",\"binaries/x2t\",\"binaries/fonts/*\",\"editors/sdkjs/word/*\",\"editors/sdkjs/cell/*\",\"editors/sdkjs/slide/*\",\"\
+        editors/sdkjs/common/Native/*\",\"editors/sdkjs/common/AllFonts.js\",\"editors/sdkjs/common/libfont/engine/*\",\"editors/web-apps/vendor/xregexp/*\"\
+        ,\"templates/*\"]}}' \\\n  2>&1 | tee /tmp/tauri-build.log\n"
+    - name: Sign and verify the complete macOS bundle and DMG
+      shell: bash
+      run: |
+        set -euo pipefail
+        BUNDLE="src-tauri/target/${{ matrix.target }}/release/bundle"
+        APP=$(find "$BUNDLE/macos" -maxdepth 1 -name '*.app' -print -quit)
+        test -n "$APP"
+        # The linker signature does not seal app resources. Sign the final bundle.
+        codesign --force --deep --sign - "$APP"
+        codesign --verify --deep --strict --verbose=2 "$APP"
+        STAGE=$(mktemp -d)
+        ditto "$APP" "$STAGE/AltOffice.app"
+        ln -s /Applications "$STAGE/Applications"
+        DMG=$(find "$BUNDLE/dmg" -maxdepth 1 -name '*.dmg' -print -quit)
+        test -n "$DMG"
+        rm "$DMG"
+        hdiutil create -volname AltOffice -srcfolder "$STAGE" -format UDZO "$DMG"
+        hdiutil verify "$DMG"
+        MOUNT=$(mktemp -d)
+        hdiutil attach -readonly -nobrowse -mountpoint "$MOUNT" "$DMG"
+        trap 'hdiutil detach "$MOUNT"; rm -rf "$STAGE"' EXIT
+        codesign --verify --deep --strict --verbose=2 "$MOUNT/AltOffice.app"
+    - name: Show macOS bundle info
+      run: 'BUNDLE="src-tauri/target/${{ matrix.target }}/release/bundle"
+
+        du -sh "$BUNDLE/macos/"*.app 2>/dev/null || true
+
+        ls -lh "$BUNDLE/dmg/"*.dmg 2>/dev/null || true
+
+        '
+    - name: Upload DMG artifact
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with:
+        name: installer-${{ matrix.target }}
+        path: src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg
+    - name: Upload logs on failure
+      if: failure()
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with:
+        name: build-logs-macos-${{ matrix.target }}
+        path: '/tmp/doctrenderer-build.log
+
+          /tmp/tauri-build.log
+
+          '
+    timeout-minutes: 120
+  build-linux:
+    needs: build-frontend
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - target: x86_64-unknown-linux-gnu
+          runner: ubuntu-22.04
+          sdkjs_tag: v9.4.0.129
+          sdkjs_remote: https://github.com/ONLYOFFICE/sdkjs.git
+          sdkjs_commit: 75b53d504bfd81bfa35d59bb57dd9e56f7c9235d
+        - target: aarch64-unknown-linux-gnu
+          runner: ubuntu-22.04-arm
+          sdkjs_tag: v9.4.0.129
+          sdkjs_remote: https://github.com/ONLYOFFICE/sdkjs.git
+          sdkjs_commit: 75b53d504bfd81bfa35d59bb57dd9e56f7c9235d
+    steps:
+    - name: Checkout pinned Euro-Office desktop host
+      uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      with:
+        repository: delmarguillen/euro-office-lite
+        ref: 41558fdbff7b5248f5f302b3b2b6a189178a447f
+        submodules: recursive
+        persist-credentials: false
+    - name: Checkout AltStack overlay
+      uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      with:
+        path: .altstack-source
+        persist-credentials: false
+    - name: Apply AltOffice identity
+      shell: bash
+      run: python .altstack-source/desktop-native/prepare.py
+    - name: Diagnose environment
+      run: 'echo "::group::System info"
+
+        uname -a
+
+        lsb_release -a 2>/dev/null || cat /etc/os-release
+
+        echo "Arch: $(uname -m)"
+
+        echo "glibc: $(ldd --version | head -1)"
+
+        echo "::endgroup::"
+
+        '
+    - name: Install Linux system dependencies
+      run: "sudo apt-get update\nsudo apt-get install -y \\\n  libwebkit2gtk-4.1-dev \\\n  libjavascriptcoregtk-4.1-dev \\\n  libsoup-3.0-dev\
+        \ \\\n  libgtk-3-dev \\\n  libayatana-appindicator3-dev \\\n  librsvg2-dev \\\n  libssl-dev \\\n  patchelf \\\n  python3-pip\n"
+    - name: Setup Node.js
+      uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+      with:
+        node-version: 20
+        cache: npm
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30
+      with:
+        targets: ${{ matrix.target }}
+    - name: Cache Cargo
+      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+      with:
+        path: '~/.cargo/registry
+
+          ~/.cargo/git
+
+          src-tauri/target
+
+          '
+        key: altstack-cargo-${{ startsWith(github.ref, 'refs/tags/v') && 'release' || 'ci' }}-${{ runner.os }}-${{ matrix.target }}-${{ hashFiles('src-tauri/Cargo.lock',
+          'src-tauri/Cargo.toml') }}
+        restore-keys: altstack-cargo-${{ startsWith(github.ref, 'refs/tags/v') && 'release' || 'ci' }}-${{ runner.os }}-${{ matrix.target }}-
+    - name: Install npm dependencies
+      run: npm ci --omit=dev
+    - name: Download production frontend
+      uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+      with:
+        name: production-frontend
+        path: src-dist/
+    - name: Validate production frontend
+      run: npm run validate:frontend:prod
+    - name: Generate Linux icons
+      run: 'echo "::group::generate-icons"
+
+        python3 -m pip install Pillow --quiet --break-system-packages || python3 -m pip install Pillow --quiet
+
+        chmod +x scripts/generate-icons.sh
+
+        bash scripts/generate-icons.sh
+
+        echo "::endgroup::"
+
+        '
+    - name: Download x2t Linux binaries
+      run: 'chmod +x scripts/get-x2t-ci.sh
+
+        bash scripts/get-x2t-ci.sh
+
+        '
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Copy x2t to binaries for DoctRenderer PDF path
+      run: 'cp "src-tauri/binaries/x2t-${{ matrix.target }}" "src-tauri/binaries/x2t"
+
+        echo "x2t resource copy created ($(wc -c < src-tauri/binaries/x2t) bytes)"
+
+        '
+    - name: Prepare DoctRenderer resources
+      env:
+        DOCTRENDERER_SDKJS_TAG: ${{ matrix.sdkjs_tag }}
+        DOCTRENDERER_SDKJS_REMOTE: ${{ matrix.sdkjs_remote }}
+        DOCTRENDERER_SDKJS_COMMIT: ${{ matrix.sdkjs_commit }}
+      run: 'set -o pipefail
+
+        echo "::group::Copy fonts to binaries"
+
+        mkdir -p src-tauri/binaries/fonts
+
+        cp src/fonts/*.ttf src-tauri/binaries/fonts/
+
+        cp src-dist/sdkjs/common/AllFonts.js src-tauri/binaries/AllFonts.js
+
+        echo "Fonts copied: $(ls src-tauri/binaries/fonts/*.ttf | wc -l)"
+
+        echo "::endgroup::"
+
+
+        echo "::group::Compile sdkjs for DoctRenderer"
+
+        chmod +x scripts/compile-doctrenderer-sdkjs.sh
+
+        export DOCTRENDERER_STAGING="$RUNNER_TEMP/doctrenderer-sdkjs"
+
+        export ALLFONTS_SOURCE="$GITHUB_WORKSPACE/src-dist/sdkjs/common/AllFonts.js"
+
+        bash scripts/compile-doctrenderer-sdkjs.sh 2>&1 | tee /tmp/doctrenderer-build.log
+
+        echo "::endgroup::"
+
+        echo "::group::Create DoctRenderer directory structure"
+
+        chmod +x scripts/prepare-doctrenderer.sh
+
+        DOCTRENDERER_SDKJS="$DOCTRENDERER_STAGING" bash scripts/prepare-doctrenderer.sh
+
+        echo "::endgroup::"
+
+        '
+    - name: Build Tauri app
+      run: "set -o pipefail\nnpx tauri build \\\n  --target ${{ matrix.target }} \\\n  --config '{\"bundle\":{\"targets\":[\"deb\"],\"icon\":[\"\
+        icons/icon.png\",\"icons/128x128.png\",\"icons/128x128@2x.png\",\"icons/32x32.png\",\"icons/256x256.png\"],\"resources\":[\"binaries/*.so\"\
+        ,\"binaries/*.so.*\",\"binaries/*.config\",\"binaries/*.dat\",\"binaries/*.js\",\"binaries/x2t\",\"binaries/fonts/*\",\"editors/sdkjs/word/*\"\
+        ,\"editors/sdkjs/cell/*\",\"editors/sdkjs/slide/*\",\"editors/sdkjs/common/Native/*\",\"editors/sdkjs/common/AllFonts.js\",\"editors/sdkjs/common/libfont/engine/*\"\
+        ,\"editors/web-apps/vendor/xregexp/*\",\"templates/*\"]}}' \\\n  2>&1 | tee /tmp/tauri-build.log\n"
+    - name: Verify packaged Linux PDF conversion
+      run: "DEB=$(find \"src-tauri/target/${{ matrix.target }}/release/bundle/deb\" -maxdepth 1 -name '*.deb' -print -quit)\nif [ -z \"$DEB\"\
+        \ ]; then\n  echo \"ERROR: No .deb found for PDF smoke test\"\n  exit 1\nfi\n\nEXTRACTED=\"$RUNNER_TEMP/euro-office-lite-deb\"\nrm -rf\
+        \ \"$EXTRACTED\"\nmkdir -p \"$EXTRACTED\"\ndpkg-deb -x \"$DEB\" \"$EXTRACTED\"\n\nSDK_BUNDLE=$(find \"$EXTRACTED\" -path '*/editors/sdkjs/word/sdk-all-min.js'\
+        \ -print -quit)\nif [ -z \"$SDK_BUNDLE\" ]; then\n  echo \"ERROR: sdk-all-min.js not found in packaged .deb\"\n  exit 1\nfi\nAPP_ROOT=${SDK_BUNDLE%/editors/sdkjs/word/sdk-all-min.js}\n\
+        \nchmod +x scripts/smoke-test-linux-pdf-bundle.sh\nbash scripts/smoke-test-linux-pdf-bundle.sh \"$APP_ROOT\"\n"
+    - name: Show Linux package info
+      run: 'DEB_DIR="src-tauri/target/${{ matrix.target }}/release/bundle/deb"
+
+        ls -lh "$DEB_DIR/"*.deb
+
+        dpkg-deb --info "$DEB_DIR/"*.deb | head -40
+
+        '
+    - name: Upload .deb artifact
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with:
+        name: installer-${{ matrix.target }}
+        path: src-tauri/target/${{ matrix.target }}/release/bundle/deb/*.deb
+    - name: Upload logs on failure
+      if: failure()
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with:
+        name: build-logs-linux-${{ matrix.target }}
+        path: '/tmp/doctrenderer-build.log
+
+          /tmp/tauri-build.log
+
+          '
+    timeout-minutes: 120
+  release:
+    needs:
+    - build-windows
+    - build-macos
+    - build-linux
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+    - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+    - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+      with:
+        pattern: installer-*
+        path: installers
+    - name: Prepare complete six-platform release
+      run: python desktop-native/publish.py
+    - name: Publish downloadable installers
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: "set -euo pipefail\nTAG=altoffice-desktop-v0.2.0\ngh release view \"$TAG\" >/dev/null 2>&1 || gh release create \"$TAG\" --draft --target\
+        \ \"$GITHUB_SHA\" --title \"AltOffice Desktop 0.2.0 \u2014 Early access\" --notes \"Installable AltOffice packages with local Euro-Office\
+        \ editing. Windows x64/ARM64, macOS Intel/Apple Silicon, and Linux x64/ARM64. Windows packages are unsigned; macOS builds are not notarized.\
+        \ Based on Euro-Office Lite; upstream notices and corresponding source links are retained. Online collaboration is available separately\
+        \ through the AltOffice website.\"\ngh release upload \"$TAG\" release-files/* --clobber\ngh release edit \"$TAG\" --draft=false --prerelease\n"
+'on':
+  push:
+    branches:
+    - altstack/desktop-releases
+    paths:
+    - desktop-native/**
+    - .github/workflows/altoffice-native.yml
+  workflow_dispatch: {}
