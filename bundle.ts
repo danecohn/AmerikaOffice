@@ -7,3 +7,5 @@ for(const folder of ['public','templates'])for(const name of await readdir(folde
 }
 const source=await Bun.file('server.ts').text();await Bun.write('dist/server.ts',source.replace('const ASSETS: Record<string,{type:string,data:string}> = {}; // BUNDLE_ASSETS','const ASSETS = '+JSON.stringify(assets)+';'));
 console.log('Bundled '+Object.keys(assets).length+' assets.');
+
+for(const name of ['warehouse.ts','cloud-files.ts'])await Bun.write('dist/'+name,Bun.file(name));
