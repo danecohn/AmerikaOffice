@@ -29,7 +29,7 @@ export function createOffice(options:any={}){
  CREATE TABLE IF NOT EXISTS shares(hash TEXT PRIMARY KEY,doc TEXT NOT NULL REFERENCES documents(id),role TEXT NOT NULL,expires INTEGER NOT NULL,created INTEGER NOT NULL);
  CREATE TABLE IF NOT EXISTS versions(doc TEXT NOT NULL REFERENCES documents(id),revision INTEGER NOT NULL,digest TEXT NOT NULL,size INTEGER NOT NULL,created INTEGER NOT NULL,PRIMARY KEY(doc,revision));
  CREATE TABLE IF NOT EXISTS events(id INTEGER PRIMARY KEY,doc TEXT,user TEXT,action TEXT NOT NULL,created INTEGER NOT NULL);`);
- const maxFile=Number(env.MAX_FILE_BYTES||25*1024*1024),quota=Number(env.USER_QUOTA_BYTES||100*1024*1024),globalQuota=Number(env.TOTAL_QUOTA_BYTES||4*1024*1024*1024);
+ const maxFile=Number(env.MAX_FILE_BYTES||25*1024*1024),quota=8_000_000_000,plusQuota=64_000_000_000,globalQuota=Number(env.TOTAL_QUOTA_BYTES||4*1024*1024*1024);
  const net=options.fetch||fetch,assets=options.assets||ASSETS;const inflight=new Set<string>(),rates=new Map<string,{n:number,until:number}>();
  const fail=(status:number,message:string):never=>{throw Object.assign(Error(message),{status});};
  const q=(s:string)=>db.query(s);const json=(v:any,status=200)=>new Response(JSON.stringify(v),{status,headers:{'Content-Type':'application/json'}});
@@ -45,10 +45,22 @@ export function createOffice(options:any={}){
  const rate=(key:string,max=60)=>{const now=Date.now();for(const[k,v]of rates)if(v.until<now)rates.delete(k);const r=rates.get(key)||{n:0,until:now+3600000};r.n++;rates.set(key,r);if(r.n>max)fail(429,'Too many requests. Please try again later.');};
  const body=async(req:Request,limit=65536)=>{const raw=await req.text();if(Buffer.byteLength(raw)>limit)fail(413,'Request too large.');try{return JSON.parse(raw);}catch{fail(400,'Invalid JSON.');}};
  const event=(d:string|null,u:string|null,a:string)=>q('INSERT INTO events(doc,user,action,created) VALUES(?,?,?,?)').run(d,u,a,Date.now());
+ const plans=new Map<string,{plus:boolean,until:number}>();
+ async function planFor(id:string){
+  const cached=plans.get(id);if(cached&&cached.until>Date.now())return cached;
+  const key=env.OFFICE_ENTITLEMENT_SECRET;if(!key||key.length<32)fail(503,'Storage plan verification is unavailable.');
+  const path='/api/internal/office-entitlement?actor='+encodeURIComponent(id),time=String(Date.now());
+  const signature=createHmac('sha256',key).update(time+'\nGET\n'+path).digest('base64url');
+  const response=await net(social+path,{headers:{'x-altstack-time':time,'x-altstack-signature':signature},redirect:'error',signal:AbortSignal.timeout(10000)});
+  if(!response.ok)fail(503,'Storage plan verification is unavailable.');const result=await response.json() as any;
+  if(result.actor!==id||typeof result.plus!=='boolean')fail(503,'Invalid storage plan response.');
+  const plan={plus:result.plus,until:Date.now()+300000};plans.set(id,plan);return plan;
+ }
+ const quotaFor=(id:string)=>plans.get(id)?.plus?plusQuota:quota;
  function checkQuota(u:string,newBytes:number){
   const used=(q('SELECT COALESCE(SUM(v.size),0) AS n FROM versions v JOIN documents d ON d.id=v.doc WHERE d.owner=?').get(u) as any).n;
   const total=(q('SELECT COALESCE(SUM(size),0) AS n FROM versions').get() as any).n;
-  if(used+newBytes>quota)fail(413,'Your storage allowance is full.');if(total+newBytes>globalQuota)fail(507,'Office storage is full.');
+  if(used+newBytes>quotaFor(u))fail(413,'Your storage allowance is full.');if(total+newBytes>globalQuota)fail(507,'Office storage is full.');
  }
  async function store(bytes:Uint8Array){if(bytes.byteLength>maxFile)fail(413,'This file is too large.');const digest=hash(bytes);const target=join(dir,'files',digest);if(!existsSync(target)){const temp=target+'.'+token()+'.tmp';await Bun.write(temp,bytes);renameSync(temp,target);}return digest;}
  const cleanTitle=(s:any)=>String(s||'Untitled').normalize('NFC').replace(/[\x00-\x1f/\\]/g,' ').trim().slice(0,160)||'Untitled';
@@ -63,7 +75,7 @@ export function createOffice(options:any={}){
   if(['GET','HEAD'].includes(method)&&url.hostname==='drive.altstack.org'&&!path.startsWith('/api/')&&!path.startsWith('/files/')&&!path.startsWith('/callbacks/'))return Response.redirect(origin+url.pathname+url.search,302);
   if(path==='/downloads')return Response.redirect('https://altstack.org/downloads/office',302);
   if(path==='/healthz')return json({ok:true,product:'AltOffice'});
-  if(path==='/api/me'&&method==='GET'){const u=session(req);return json({user:u||null,docsUrl:docs,maxFileBytes:maxFile,quotaBytes:quota});}
+  if(path==='/api/me'&&method==='GET'){const u=session(req);const plan=u?await planFor(u.id):null;return json({user:u||null,docsUrl:docs,maxFileBytes:maxFile,quotaBytes:u?quotaFor(u.id):quota,plan:plan?.plus?'plus':'free'});}
   if(path==='/api/auth/start'&&method==='POST'){
    csrf(req);rate('signin:'+ (req.headers.get('x-railway-client-ip')||'unknown'),15);
    const verifier=randomBytes(48).toString('base64url'),challenge=createHash('sha256').update(verifier).digest('base64url');const result=await socialCall('desktop/start',{challenge});
@@ -87,16 +99,16 @@ export function createOffice(options:any={}){
   }
   if(path==='/api/logout'&&method==='POST'){csrf(req);q('DELETE FROM sessions WHERE hash=?').run(hash(cookie(req,'ao_session')));return new Response('{}',{headers:{'Content-Type':'application/json','Set-Cookie':cookieString('ao_session','',0)}});}
   if(path==='/api/documents'&&method==='GET'){
-   const u=user(req);const list=q(`SELECT d.*,CASE WHEN d.owner=? THEN 'owner' ELSE m.role END AS role FROM documents d LEFT JOIN members m ON m.doc=d.id AND m.user=? WHERE d.deleted=0 AND (d.owner=? OR m.user=?) ORDER BY d.updated DESC`).all(u.id,u.id,u.id,u.id);
-   const used=(q('SELECT COALESCE(SUM(v.size),0) AS n FROM versions v JOIN documents d ON d.id=v.doc WHERE d.owner=?').get(u.id) as any).n;return json({documents:list.map(publicDoc),usedBytes:used});
+   const u=user(req);const plan=await planFor(u.id);const list=q(`SELECT d.*,CASE WHEN d.owner=? THEN 'owner' ELSE m.role END AS role FROM documents d LEFT JOIN members m ON m.doc=d.id AND m.user=? WHERE d.deleted=0 AND (d.owner=? OR m.user=?) ORDER BY d.updated DESC`).all(u.id,u.id,u.id,u.id);
+   const used=(q('SELECT COALESCE(SUM(v.size),0) AS n FROM versions v JOIN documents d ON d.id=v.doc WHERE d.owner=?').get(u.id) as any).n;return json({documents:list.map(publicDoc),usedBytes:used,quotaBytes:quotaFor(u.id),plan:plan.plus?'plus':'free'});
   }
   if(path==='/api/documents'&&method==='POST'){
-   csrf(req);const u=user(req);rate('create:'+u.id,100);const b=await body(req);if(!['docx','xlsx','pptx'].includes(b.ext))fail(400,'Choose a document, spreadsheet, or presentation.');
+   csrf(req);const u=user(req);await planFor(u.id);rate('create:'+u.id,100);const b=await body(req);if(!['docx','xlsx','pptx'].includes(b.ext))fail(400,'Choose a document, spreadsheet, or presentation.');
    const template=assets['/templates/blank.'+b.ext];if(!template)fail(503,'Document templates are unavailable.');const bytes=Buffer.from(template.data,'base64');checkQuota(u.id,bytes.length);const digest=await store(bytes),id=randomBytes(16).toString('hex'),now=Date.now();
    db.transaction(()=>{checkQuota(u.id,bytes.length);q('INSERT INTO documents(id,owner,title,ext,digest,size,created,updated) VALUES(?,?,?,?,?,?,?,?)').run(id,u.id,cleanTitle(b.title),b.ext,digest,bytes.length,now,now);q('INSERT INTO versions VALUES(?,?,?,?,?)').run(id,1,digest,bytes.length,now);event(id,u.id,'created');})();return json({document:publicDoc(doc(id))},201);
   }
   if(path==='/api/upload'&&method==='POST'){
-   csrf(req);const u=user(req);rate('upload:'+u.id,50);if(Number(req.headers.get('content-length')||0)>maxFile+65536)fail(413,'File too large.');const form=await req.formData(),file=form.get('file');if(!(file instanceof File))fail(400,'Choose a file.');
+   csrf(req);const u=user(req);await planFor(u.id);rate('upload:'+u.id,50);if(Number(req.headers.get('content-length')||0)>maxFile+65536)fail(413,'File too large.');const form=await req.formData(),file=form.get('file');if(!(file instanceof File))fail(400,'Choose a file.');
    const ext=file.name.split('.').pop()?.toLowerCase()||'';if(!allowed.has(ext))fail(400,'Unsupported document format.');if(file.size>maxFile)fail(413,'File too large.');checkQuota(u.id,file.size);const bytes=new Uint8Array(await file.arrayBuffer()),digest=await store(bytes),id=randomBytes(16).toString('hex'),now=Date.now();
    db.transaction(()=>{checkQuota(u.id,bytes.length);q('INSERT INTO documents(id,owner,title,ext,digest,size,created,updated) VALUES(?,?,?,?,?,?,?,?)').run(id,u.id,cleanTitle(file.name.replace(/\.[^.]+$/,'')),ext,digest,file.size,now,now);q('INSERT INTO versions VALUES(?,?,?,?,?)').run(id,1,digest,file.size,now);event(id,u.id,'uploaded');})();return json({document:publicDoc(doc(id))},201);
   }
@@ -137,6 +149,7 @@ export function createOffice(options:any={}){
    if(payload.key!==c.key||b.key!==c.key||payload.status!==b.status||payload.url!==b.url)fail(403,'Editor callback does not match its signature.');
    const d=doc(id);if(c.key!==id+'-'+d.epoch)return json({error:0});
    if([2,6].includes(b.status)){
+    await planFor(d.owner);
     const target=new URL(payload.url);if(![docs,env.DOCS_PREVIOUS_URL].filter(Boolean).some((value:string)=>target.origin===new URL(value).origin))fail(403,'Untrusted editor download URL.');
     const response=await net(target,{redirect:'error',signal:AbortSignal.timeout(45000)});if(!response.ok)fail(502,'Editor save download failed.');
     if(Number(response.headers.get('content-length')||0)>maxFile)fail(413,'Edited file too large.');
