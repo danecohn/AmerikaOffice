@@ -1,4 +1,4 @@
-# Makk Office editor service
+# AltOffice editor service
 
 Build this directory as the AmerikaDocs service. It wraps Euro-Office Document Server 9.3.1 without changing editor branding or application code.
 

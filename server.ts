@@ -16,7 +16,7 @@ export function verifyJwt(value:string,secret:string){
  const p=JSON.parse(Buffer.from(parts[1],'base64url').toString());if(p.exp&&p.exp<Date.now()/1000)throw Error('Expired signature');return p;
 }
 export function createOffice(options:any={}){
- const env=options.env||process.env,dir=env.DATA_DIR||'./data',origin=env.PUBLIC_ORIGIN||'http://localhost:3000',docs=env.DOCS_URL||'https://amerikadocs-production.up.railway.app',social=env.SOCIAL_ORIGIN||'https://www.amerika.social';
+ const env=options.env||process.env,dir=env.DATA_DIR||'./data',origin=env.PUBLIC_ORIGIN||'http://localhost:3000',docs=env.DOCS_URL||'https://editor.altstack.org',social=env.SOCIAL_ORIGIN||'https://altstack.org';
  const secret=env.OFFICE_SECRET,editorSecret=env.JWT_SECRET;
  if(!secret||secret.length<32||!editorSecret||editorSecret.length<32)throw Error('Set independent OFFICE_SECRET and JWT_SECRET, at least 32 characters each.');
  mkdirSync(join(dir,'files'),{recursive:true});
@@ -29,25 +29,38 @@ export function createOffice(options:any={}){
  CREATE TABLE IF NOT EXISTS shares(hash TEXT PRIMARY KEY,doc TEXT NOT NULL REFERENCES documents(id),role TEXT NOT NULL,expires INTEGER NOT NULL,created INTEGER NOT NULL);
  CREATE TABLE IF NOT EXISTS versions(doc TEXT NOT NULL REFERENCES documents(id),revision INTEGER NOT NULL,digest TEXT NOT NULL,size INTEGER NOT NULL,created INTEGER NOT NULL,PRIMARY KEY(doc,revision));
  CREATE TABLE IF NOT EXISTS events(id INTEGER PRIMARY KEY,doc TEXT,user TEXT,action TEXT NOT NULL,created INTEGER NOT NULL);`);
- const maxFile=Number(env.MAX_FILE_BYTES||25*1024*1024),quota=Number(env.USER_QUOTA_BYTES||100*1024*1024),globalQuota=Number(env.TOTAL_QUOTA_BYTES||4*1024*1024*1024);
+ const maxFile=Number(env.MAX_FILE_BYTES||25*1024*1024),quota=800_000_000,plusQuota=8_000_000_000,globalQuota=Number(env.TOTAL_QUOTA_BYTES||128_000_000_000);
  const net=options.fetch||fetch,assets=options.assets||ASSETS;const inflight=new Set<string>(),rates=new Map<string,{n:number,until:number}>();
  const fail=(status:number,message:string):never=>{throw Object.assign(Error(message),{status});};
  const q=(s:string)=>db.query(s);const json=(v:any,status=200)=>new Response(JSON.stringify(v),{status,headers:{'Content-Type':'application/json'}});
  const cookie=(req:Request,name:string)=>{const part=(req.headers.get('cookie')||'').split(';').map(x=>x.trim()).find(x=>x.startsWith(name+'='));return part?.slice(name.length+1)||'';};
  const cookieString=(name:string,value:string,age:number)=>`${name}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${age}${origin.startsWith('https:')?'; Secure':''}`;
  const session=(req:Request)=>q('SELECT u.* FROM sessions s JOIN users u ON u.id=s.user WHERE s.hash=? AND s.expires>?').get(hash(cookie(req,'ao_session')),Date.now()) as any;
- const user=(req:Request)=>session(req)||fail(401,'Sign in to Makk Office.');
+ const user=(req:Request)=>session(req)||fail(401,'Sign in to AltOffice.');
  const doc=(id:string)=>q('SELECT * FROM documents WHERE id=? AND deleted=0').get(id) as any||fail(404,'Document not found.');
  const access=(id:string,u:any,write=false)=>{const d=doc(id);const role=d.owner===u.id?'owner':(q('SELECT role FROM members WHERE doc=? AND user=?').get(id,u.id) as any)?.role;if(!role||(write&&role==='view'))fail(403,'You do not have permission for this document.');return {...d,role};};
  const owner=(id:string,u:any)=>{const d=access(id,u);if(d.role!=='owner')fail(403,'Only the owner can change sharing or delete this document.');return d;};
- const csrf=(req:Request)=>{if(req.headers.get('origin')!==origin)fail(403,'Request origin rejected.');};
+ const browserOrigins=new Set([origin,...(env.BROWSER_ORIGIN_ALIASES||'').split(',').map((v:string)=>v.trim()).filter(Boolean)]);
+ const csrf=(req:Request)=>{if(!browserOrigins.has(req.headers.get('origin')||''))fail(403,'Request origin rejected.');};
  const rate=(key:string,max=60)=>{const now=Date.now();for(const[k,v]of rates)if(v.until<now)rates.delete(k);const r=rates.get(key)||{n:0,until:now+3600000};r.n++;rates.set(key,r);if(r.n>max)fail(429,'Too many requests. Please try again later.');};
  const body=async(req:Request,limit=65536)=>{const raw=await req.text();if(Buffer.byteLength(raw)>limit)fail(413,'Request too large.');try{return JSON.parse(raw);}catch{fail(400,'Invalid JSON.');}};
  const event=(d:string|null,u:string|null,a:string)=>q('INSERT INTO events(doc,user,action,created) VALUES(?,?,?,?)').run(d,u,a,Date.now());
+ const plans=new Map<string,{plus:boolean,until:number}>();
+ async function planFor(id:string){
+  const cached=plans.get(id);if(cached&&cached.until>Date.now())return cached;
+  const key=env.OFFICE_ENTITLEMENT_SECRET;if(!key||key.length<32)fail(503,'Storage plan verification is unavailable.');
+  const path='/api/internal/office-entitlement?actor='+encodeURIComponent(id),time=String(Date.now());
+  const signature=createHmac('sha256',key).update(time+'\nGET\n'+path).digest('base64url');
+  const response=await net(social+path,{headers:{'x-altstack-time':time,'x-altstack-signature':signature},redirect:'error',signal:AbortSignal.timeout(10000)});
+  if(!response.ok)fail(503,'Storage plan verification is unavailable.');const result=await response.json() as any;
+  if(result.actor!==id||typeof result.plus!=='boolean')fail(503,'Invalid storage plan response.');
+  const plan={plus:result.plus,until:Date.now()+300000};plans.set(id,plan);return plan;
+ }
+ const quotaFor=(id:string)=>plans.get(id)?.plus?plusQuota:quota;
  function checkQuota(u:string,newBytes:number){
   const used=(q('SELECT COALESCE(SUM(v.size),0) AS n FROM versions v JOIN documents d ON d.id=v.doc WHERE d.owner=?').get(u) as any).n;
   const total=(q('SELECT COALESCE(SUM(size),0) AS n FROM versions').get() as any).n;
-  if(used+newBytes>quota)fail(413,'Your storage allowance is full.');if(total+newBytes>globalQuota)fail(507,'Office storage is full.');
+  if(used+newBytes>quotaFor(u))fail(413,'Your storage allowance is full.');if(total+newBytes>globalQuota)fail(507,'Office storage is full.');
  }
  async function store(bytes:Uint8Array){if(bytes.byteLength>maxFile)fail(413,'This file is too large.');const digest=hash(bytes);const target=join(dir,'files',digest);if(!existsSync(target)){const temp=target+'.'+token()+'.tmp';await Bun.write(temp,bytes);renameSync(temp,target);}return digest;}
  const cleanTitle=(s:any)=>String(s||'Untitled').normalize('NFC').replace(/[\x00-\x1f/\\]/g,' ').trim().slice(0,160)||'Untitled';
@@ -56,12 +69,13 @@ export function createOffice(options:any={}){
  const kind=(ext:string)=>['xlsx','xls','ods','csv'].includes(ext)?'cell':['pptx','ppt','odp'].includes(ext)?'slide':ext==='pdf'?'pdf':'word';
  const sign=(claims:any)=>jwt({...claims,exp:Math.floor(Date.now()/1000)+24*3600},secret);
  const verify=(value:string,scope:string,id:string)=>{let c:any;try{c=verifyJwt(value,secret);}catch{fail(403,'This document link has expired. Reopen it from Office.');}if(c.scope!==scope||c.id!==id)fail(403,'Invalid document link.');return c;};
- const socialCall=async(path:string,data:any)=>{const res=await net(social+'/api/'+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data),signal:AbortSignal.timeout(15000)});const v=await res.json() as any;if(!res.ok)fail(res.status>=500?502:res.status,v.error||'Amerika account sign-in is unavailable.');return v;};
+ const socialCall=async(path:string,data:any)=>{const res=await net(social+'/api/'+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data),signal:AbortSignal.timeout(15000)});const v=await res.json() as any;if(!res.ok)fail(res.status>=500?502:res.status,v.error||'AltStack account sign-in is unavailable.');return v;};
  async function handle(req:Request){
   const url=new URL(req.url),path=url.pathname,method=req.method;
-  if(path==='/downloads')return Response.redirect('https://www.amerika.social/downloads/office',302);
-  if(path==='/healthz')return json({ok:true,product:'Makk Office'});
-  if(path==='/api/me'&&method==='GET'){const u=session(req);return json({user:u||null,docsUrl:docs,maxFileBytes:maxFile,quotaBytes:quota});}
+  if(['GET','HEAD'].includes(method)&&url.hostname==='drive.altstack.org'&&!path.startsWith('/api/')&&!path.startsWith('/files/')&&!path.startsWith('/callbacks/'))return Response.redirect(origin+url.pathname+url.search,302);
+  if(path==='/downloads')return Response.redirect(social+'/downloads/office',302);
+  if(path==='/healthz')return json({ok:true,product:'AltOffice'});
+  if(path==='/api/me'&&method==='GET'){const u=session(req);const plan=u?await planFor(u.id):null;return json({user:u||null,docsUrl:docs,maxFileBytes:maxFile,quotaBytes:u?quotaFor(u.id):quota,plan:plan?.plus?'plus':'free'});}
   if(path==='/api/auth/start'&&method==='POST'){
    csrf(req);rate('signin:'+ (req.headers.get('x-railway-client-ip')||'unknown'),15);
    const verifier=randomBytes(48).toString('base64url'),challenge=createHash('sha256').update(verifier).digest('base64url');const result=await socialCall('desktop/start',{challenge});
@@ -85,16 +99,16 @@ export function createOffice(options:any={}){
   }
   if(path==='/api/logout'&&method==='POST'){csrf(req);q('DELETE FROM sessions WHERE hash=?').run(hash(cookie(req,'ao_session')));return new Response('{}',{headers:{'Content-Type':'application/json','Set-Cookie':cookieString('ao_session','',0)}});}
   if(path==='/api/documents'&&method==='GET'){
-   const u=user(req);const list=q(`SELECT d.*,CASE WHEN d.owner=? THEN 'owner' ELSE m.role END AS role FROM documents d LEFT JOIN members m ON m.doc=d.id AND m.user=? WHERE d.deleted=0 AND (d.owner=? OR m.user=?) ORDER BY d.updated DESC`).all(u.id,u.id,u.id,u.id);
-   const used=(q('SELECT COALESCE(SUM(v.size),0) AS n FROM versions v JOIN documents d ON d.id=v.doc WHERE d.owner=?').get(u.id) as any).n;return json({documents:list.map(publicDoc),usedBytes:used});
+   const u=user(req);const plan=await planFor(u.id);const list=q(`SELECT d.*,CASE WHEN d.owner=? THEN 'owner' ELSE m.role END AS role FROM documents d LEFT JOIN members m ON m.doc=d.id AND m.user=? WHERE d.deleted=0 AND (d.owner=? OR m.user=?) ORDER BY d.updated DESC`).all(u.id,u.id,u.id,u.id);
+   const used=(q('SELECT COALESCE(SUM(v.size),0) AS n FROM versions v JOIN documents d ON d.id=v.doc WHERE d.owner=?').get(u.id) as any).n;return json({documents:list.map(publicDoc),usedBytes:used,quotaBytes:quotaFor(u.id),plan:plan.plus?'plus':'free'});
   }
   if(path==='/api/documents'&&method==='POST'){
-   csrf(req);const u=user(req);rate('create:'+u.id,100);const b=await body(req);if(!['docx','xlsx','pptx'].includes(b.ext))fail(400,'Choose a document, spreadsheet, or presentation.');
+   csrf(req);const u=user(req);await planFor(u.id);rate('create:'+u.id,100);const b=await body(req);if(!['docx','xlsx','pptx'].includes(b.ext))fail(400,'Choose a document, spreadsheet, or presentation.');
    const template=assets['/templates/blank.'+b.ext];if(!template)fail(503,'Document templates are unavailable.');const bytes=Buffer.from(template.data,'base64');checkQuota(u.id,bytes.length);const digest=await store(bytes),id=randomBytes(16).toString('hex'),now=Date.now();
    db.transaction(()=>{checkQuota(u.id,bytes.length);q('INSERT INTO documents(id,owner,title,ext,digest,size,created,updated) VALUES(?,?,?,?,?,?,?,?)').run(id,u.id,cleanTitle(b.title),b.ext,digest,bytes.length,now,now);q('INSERT INTO versions VALUES(?,?,?,?,?)').run(id,1,digest,bytes.length,now);event(id,u.id,'created');})();return json({document:publicDoc(doc(id))},201);
   }
   if(path==='/api/upload'&&method==='POST'){
-   csrf(req);const u=user(req);rate('upload:'+u.id,50);if(Number(req.headers.get('content-length')||0)>maxFile+65536)fail(413,'File too large.');const form=await req.formData(),file=form.get('file');if(!(file instanceof File))fail(400,'Choose a file.');
+   csrf(req);const u=user(req);await planFor(u.id);rate('upload:'+u.id,50);if(Number(req.headers.get('content-length')||0)>maxFile+65536)fail(413,'File too large.');const form=await req.formData(),file=form.get('file');if(!(file instanceof File))fail(400,'Choose a file.');
    const ext=file.name.split('.').pop()?.toLowerCase()||'';if(!allowed.has(ext))fail(400,'Unsupported document format.');if(file.size>maxFile)fail(413,'File too large.');checkQuota(u.id,file.size);const bytes=new Uint8Array(await file.arrayBuffer()),digest=await store(bytes),id=randomBytes(16).toString('hex'),now=Date.now();
    db.transaction(()=>{checkQuota(u.id,bytes.length);q('INSERT INTO documents(id,owner,title,ext,digest,size,created,updated) VALUES(?,?,?,?,?,?,?,?)').run(id,u.id,cleanTitle(file.name.replace(/\.[^.]+$/,'')),ext,digest,file.size,now,now);q('INSERT INTO versions VALUES(?,?,?,?,?)').run(id,1,digest,file.size,now);event(id,u.id,'uploaded');})();return json({document:publicDoc(doc(id))},201);
   }
@@ -110,7 +124,7 @@ export function createOffice(options:any={}){
    if(action==='versions'&&method==='GET')return json({versions:q('SELECT revision,size,created FROM versions WHERE doc=? ORDER BY revision DESC').all(id)});
    if(action==='config'&&method==='GET'){
     const key=id+'-'+d.epoch,edit=d.role!=='view'&&['docx','xlsx','pptx'].includes(d.ext);
-    const config={document:{fileType:d.ext,key,title:d.title+'.'+d.ext,url:origin+'/files/'+id+'?token='+sign({scope:'download',id,key}),permissions:{edit,download:true,print:true,comment:edit,review:edit}},documentType:kind(d.ext),editorConfig:{mode:edit?'edit':'view',lang:'en',callbackUrl:origin+'/callbacks/'+id+'?token='+sign({scope:'callback',id,key}),user:{id:u.id,name:u.name},coEditing:{mode:'fast',change:true},customization:{uiTheme:'theme-dark',forcesave:true,autosave:true,goback:{url:origin},help:true,feedback:false}},type:'desktop'};
+    const config={document:{fileType:d.ext,key,title:d.title+'.'+d.ext,url:origin+'/files/'+id+'?token='+sign({scope:'download',id,key}),permissions:{edit,download:true,print:true,comment:edit,review:edit}},documentType:kind(d.ext),editorConfig:{mode:edit?'edit':'view',lang:'en',callbackUrl:origin+'/callbacks/'+id+'?token='+sign({scope:'callback',id,key}),user:{id:u.id,name:u.name},coEditing:{mode:'fast',change:true},customization:{uiTheme:'theme-light',forcesave:true,autosave:true,goback:{url:origin},help:true,feedback:false}},type:'desktop'};
     return json({config:{...config,token:jwt(config,editorSecret)},docsUrl:docs,document:publicDoc(d)});
    }
    if(action==='share'){
@@ -135,7 +149,8 @@ export function createOffice(options:any={}){
    if(payload.key!==c.key||b.key!==c.key||payload.status!==b.status||payload.url!==b.url)fail(403,'Editor callback does not match its signature.');
    const d=doc(id);if(c.key!==id+'-'+d.epoch)return json({error:0});
    if([2,6].includes(b.status)){
-    const target=new URL(payload.url);if(target.origin!==new URL(docs).origin)fail(403,'Untrusted editor download URL.');
+    await planFor(d.owner);
+    const target=new URL(payload.url);if(![docs,env.DOCS_PREVIOUS_URL].filter(Boolean).some((value:string)=>target.origin===new URL(value).origin))fail(403,'Untrusted editor download URL.');
     const response=await net(target,{redirect:'error',signal:AbortSignal.timeout(45000)});if(!response.ok)fail(502,'Editor save download failed.');
     if(Number(response.headers.get('content-length')||0)>maxFile)fail(413,'Edited file too large.');
     const chunks:Uint8Array[]=[];let size=0;for await(const chunk of response.body as any){size+=chunk.byteLength;if(size>maxFile)fail(413,'Edited file too large.');chunks.push(chunk);}
@@ -161,4 +176,4 @@ export function createOffice(options:any={}){
  }
  return {fetch:fetchHandler,db,close:()=>db.close()};
 }
-if(import.meta.main){const app=createOffice();Bun.serve({port:Number(process.env.PORT||3000),hostname:'0.0.0.0',maxRequestBodySize:26*1024*1024,fetch:app.fetch});console.log('Makk Office is listening.');}
+if(import.meta.main){const app=createOffice();Bun.serve({port:Number(process.env.PORT||3000),hostname:'0.0.0.0',maxRequestBodySize:26*1024*1024,fetch:app.fetch});console.log('AltOffice is listening.');}

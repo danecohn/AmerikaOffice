@@ -1,8 +1,8 @@
 import {test,expect,beforeEach,afterEach} from 'bun:test';
-import {mkdtempSync,rmSync,readFileSync} from 'node:fs';import {tmpdir} from 'node:os';import {join} from 'node:path';import {createHash} from 'node:crypto';import {createOffice,jwt,verifyJwt} from '../server';
+import {mkdtempSync,rmSync,readFileSync} from 'node:fs';import {tmpdir} from 'node:os';import {join} from 'node:path';import {createHash,createHmac} from 'node:crypto';import {createOffice,jwt,verifyJwt} from '../server';
 let app:any,dir:string;const origin='https://office.example',secret='s'.repeat(48),editorSecret='e'.repeat(48),h=(s:string)=>createHash('sha256').update(s).digest('hex');
 const assets:any={};for(const ext of ['docx','xlsx','pptx'])assets['/templates/blank.'+ext]={type:'application/octet-stream',data:readFileSync(new URL('../templates/blank.'+ext,import.meta.url)).toString('base64')};
-beforeEach(()=>{dir=mkdtempSync(join(tmpdir(),'office-'));app=createOffice({env:{DATA_DIR:dir,PUBLIC_ORIGIN:origin,OFFICE_SECRET:secret,JWT_SECRET:editorSecret,DOCS_URL:'https://editor.example'},assets,fetch:async(url:any)=>{const p=new URL(url).pathname;if(p.endsWith('/desktop/start'))return Response.json({id:'pair-id'});if(p.endsWith('/desktop/exchange'))return Response.json({actor:{id:'social-user',name:'Social User',handle:'social'},token:'temporary-social-token'});if(p.endsWith('/logout'))return Response.json({ok:true});if(p==='/cache/edited')return new Response('saved document');throw Error('Unexpected network request');}});for(const id of ['a','b','c']){app.db.query('INSERT INTO users VALUES(?,?,?,?)').run(id,id,id,Date.now());app.db.query('INSERT INTO sessions VALUES(?,?,?)').run(h(id),id,Date.now()+999999);}});
+beforeEach(()=>{dir=mkdtempSync(join(tmpdir(),'office-'));app=createOffice({env:{DATA_DIR:dir,PUBLIC_ORIGIN:origin,OFFICE_SECRET:secret,JWT_SECRET:editorSecret,OFFICE_ENTITLEMENT_SECRET:secret,TOTAL_QUOTA_BYTES:'128000000000',DOCS_URL:'https://editor.example'},assets,fetch:async(url:any,options:any)=>{const target=new URL(url),p=target.pathname;if(p==='/api/internal/office-entitlement'){const time=options.headers['x-altstack-time'];expect(options.headers['x-altstack-signature']).toBe(createHmac('sha256',secret).update(time+'\nGET\n'+p+target.search).digest('base64url'));return Response.json({actor:target.searchParams.get('actor'),plus:target.searchParams.get('actor')==='b'});}if(p.endsWith('/desktop/start'))return Response.json({id:'pair-id'});if(p.endsWith('/desktop/exchange'))return Response.json({actor:{id:'social-user',name:'Social User',handle:'social'},token:'temporary-social-token'});if(p.endsWith('/logout'))return Response.json({ok:true});if(p==='/cache/edited')return new Response('saved document');throw Error('Unexpected network request');}});for(const id of ['a','b','c']){app.db.query('INSERT INTO users VALUES(?,?,?,?)').run(id,id,id,Date.now());app.db.query('INSERT INTO sessions VALUES(?,?,?)').run(h(id),id,Date.now()+999999);}});
 afterEach(()=>{app.close();rmSync(dir,{recursive:true,force:true});});
 async function call(p:string,m='GET',b:any=undefined,u='a',extra:any={}){return app.fetch(new Request(origin+p,{method:m,headers:{cookie:'ao_session='+u,origin,...extra},body:b===undefined?undefined:JSON.stringify(b)}));}
 async function make(ext='docx'){const r=await call('/api/documents','POST',{ext,title:'Draft'});expect(r.status).toBe(201);return(await r.json()).document;}
@@ -18,3 +18,22 @@ test('deletion releases version quota and blocks old signed file URLs',async()=>
 test('public account approval creates an Office session without saving Social access tokens',async()=>{const start=await call('/api/auth/start','POST',{});expect(start.status).toBe(200);const cookie=start.headers.get('set-cookie')!.split(';')[0];const result=await call('/api/auth/poll','POST',{},'unknown',{cookie});expect((await result.json()).ok).toBe(true);expect(app.db.query('SELECT handle FROM users WHERE id=?').get('social-user').handle).toBe('social');expect(readFileSync(join(dir,'office.sqlite')).includes(Buffer.from('temporary-social-token'))).toBe(false);});
 test('JWT expiry and wrong secrets are rejected',()=>{expect(()=>verifyJwt(jwt({exp:1},secret),secret)).toThrow();expect(()=>verifyJwt(jwt({x:1},editorSecret),secret)).toThrow();});
 test('document names cannot supply paths',async()=>{const r=await call('/api/documents','POST',{ext:'docx',title:'../../danger\\file'});const d=(await r.json()).document;expect(d.title).not.toContain('/');expect(d.title).not.toContain('\\');});
+
+test('storage follows the verified account plan and counts saved versions',async()=>{
+ expect((await(await call('/api/me')).json()).quotaBytes).toBe(800_000_000);
+ expect((await(await call('/api/me','GET',undefined,'b')).json()).quotaBytes).toBe(8_000_000_000);
+ const d=await make();app.db.query('UPDATE versions SET size=? WHERE doc=?').run(800_000_000,d.id);
+ expect((await call('/api/documents','POST',{ext:'docx'})).status).toBe(413);
+ expect((await(await call('/api/documents')).json()).usedBytes).toBe(800_000_000);
+ expect((await call('/api/documents/'+d.id+'/download')).status).toBe(200);
+ expect((await call('/api/documents/'+d.id,'DELETE')).status).toBe(200);
+ expect((await call('/api/documents','POST',{ext:'docx'})).status).toBe(201);
+});
+
+test('Plus can store above the free cap and stops at 8 GB',async()=>{
+ const result=await call('/api/documents','POST',{ext:'docx'},'b');expect(result.status).toBe(201);const d=(await result.json()).document;
+ app.db.query('UPDATE versions SET size=? WHERE doc=?').run(800_000_000,d.id);
+ expect((await call('/api/documents','POST',{ext:'docx'},'b')).status).toBe(201);
+ app.db.query('UPDATE versions SET size=? WHERE doc=?').run(8_000_000_000,d.id);
+ expect((await call('/api/documents','POST',{ext:'docx'},'b')).status).toBe(413);
+});
