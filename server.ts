@@ -73,7 +73,7 @@ export function createOffice(options:any={}){
  async function handle(req:Request){
   const url=new URL(req.url),path=url.pathname,method=req.method;
   if(['GET','HEAD'].includes(method)&&url.hostname==='drive.altstack.org'&&!path.startsWith('/api/')&&!path.startsWith('/files/')&&!path.startsWith('/callbacks/'))return Response.redirect(origin+url.pathname+url.search,302);
-  if(path==='/downloads')return Response.redirect('https://altstack.org/downloads/office',302);
+  if(path==='/downloads')return Response.redirect(social+'/downloads/office',302);
   if(path==='/healthz')return json({ok:true,product:'AltOffice'});
   if(path==='/api/me'&&method==='GET'){const u=session(req);const plan=u?await planFor(u.id):null;return json({user:u||null,docsUrl:docs,maxFileBytes:maxFile,quotaBytes:u?quotaFor(u.id):quota,plan:plan?.plus?'plus':'free'});}
   if(path==='/api/auth/start'&&method==='POST'){
