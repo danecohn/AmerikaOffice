@@ -29,7 +29,7 @@ export function createOffice(options:any={}){
  CREATE TABLE IF NOT EXISTS shares(hash TEXT PRIMARY KEY,doc TEXT NOT NULL REFERENCES documents(id),role TEXT NOT NULL,expires INTEGER NOT NULL,created INTEGER NOT NULL);
  CREATE TABLE IF NOT EXISTS versions(doc TEXT NOT NULL REFERENCES documents(id),revision INTEGER NOT NULL,digest TEXT NOT NULL,size INTEGER NOT NULL,created INTEGER NOT NULL,PRIMARY KEY(doc,revision));
  CREATE TABLE IF NOT EXISTS events(id INTEGER PRIMARY KEY,doc TEXT,user TEXT,action TEXT NOT NULL,created INTEGER NOT NULL);`);
- const maxFile=Number(env.MAX_FILE_BYTES||25*1024*1024),quota=800_000_000,plusQuota=8_000_000_000,globalQuota=Number(env.TOTAL_QUOTA_BYTES||115_000_000_000);
+ const maxFile=Number(env.MAX_FILE_BYTES||25*1024*1024),quota=800_000_000,plusQuota=8_000_000_000,globalQuota=Number(env.TOTAL_QUOTA_BYTES||128_000_000_000);
  const net=options.fetch||fetch,assets=options.assets||ASSETS;const inflight=new Set<string>(),rates=new Map<string,{n:number,until:number}>();
  const fail=(status:number,message:string):never=>{throw Object.assign(Error(message),{status});};
  const q=(s:string)=>db.query(s);const json=(v:any,status=200)=>new Response(JSON.stringify(v),{status,headers:{'Content-Type':'application/json'}});
