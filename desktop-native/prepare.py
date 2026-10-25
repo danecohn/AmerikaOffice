@@ -6,10 +6,10 @@ root=Path.cwd()
 overlay=Path(__file__).resolve().parents[1]
 conf_path=root/'src-tauri/tauri.conf.json'
 conf=json.loads(conf_path.read_text())
-conf.update(productName='AltOffice',mainBinaryName='altoffice',identifier='io.altstack.office',version='0.2.0')
+conf.update(productName='AltOffice',mainBinaryName='altoffice',identifier='io.altstack.office',version='0.3.0')
 for window in conf['app']['windows']: window['title']='AltOffice'
 conf['bundle']['publisher']='Artemis Softworks LLC'
-conf['bundle']['copyright']='AltStack LLC; upstream copyrights retained in licenses and source notices.'
+conf['bundle']['copyright']='Artemis Softworks LLC; upstream copyrights retained in licenses and source notices.'
 conf_path.write_text(json.dumps(conf,indent=2)+'\n')
 
 # Only change first-party product UI. Keep upstream licenses, dictionaries,
@@ -58,3 +58,19 @@ for filename in ['scripts/get-x2t-ci.sh','scripts/get-x2t-ci.ps1']:
  text=text.replace('REPO="${GITHUB_REPOSITORY:-delmarguillen/euro-office-lite}"','REPO="delmarguillen/euro-office-lite"').replace('$repo = $env:GITHUB_REPOSITORY','$repo = "delmarguillen/euro-office-lite"')
  p.write_text(text,encoding='utf-8')
 print('Applied AltOffice branding and preserved upstream notices.')
+
+# Apply the same editor presentation and command workflow in the offline desktop build.
+companion_css=(overlay/'desktop-native/companion.css').read_text()
+companion_js=(overlay/'desktop-native/companion.js').read_text()
+entries=0
+for html in (root/'src/web-apps/apps').glob('*/main/index.html'):
+ text=html.read_text()
+ if 'asw-companion-style' in text: continue
+ text=text.replace('</head>','<style id="asw-companion-style">'+companion_css+'</style></head>')
+ text=text.replace('</body>','<script>'+companion_js+'</script></body>')
+ html.write_text(text);entries+=1
+if entries < 3: raise RuntimeError('Expected document, spreadsheet and presentation native editor entrypoints')
+print('Applied Companion interface and Actions to',entries,'native editors')
+
+mobile_theme=root/'src/web-apps/theme/euro-office/assets/less/overrides/mobile-overrides.less'
+if mobile_theme.exists():mobile_theme.write_text(mobile_theme.read_text()+'\n'+(overlay/'desktop-native/companion-mobile.css').read_text())

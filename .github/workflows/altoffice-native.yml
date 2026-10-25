@@ -609,8 +609,8 @@ jobs:
     - name: Publish downloadable installers
       env:
         GH_TOKEN: ${{ github.token }}
-      run: "set -euo pipefail\nTAG=altoffice-desktop-v0.2.0\ngh release view \"$TAG\" >/dev/null 2>&1 || gh release create \"$TAG\" --draft --target\
-        \ \"$GITHUB_SHA\" --title \"AltOffice Desktop 0.2.0 \u2014 Early access\" --notes \"Installable AltOffice packages with local Euro-Office\
+      run: "set -euo pipefail\nTAG=altoffice-desktop-v0.3.0\ngh release view \"$TAG\" >/dev/null 2>&1 || gh release create \"$TAG\" --draft --target\
+        \ \"$GITHUB_SHA\" --title \"AltOffice Desktop 0.3.0 \u2014 Early access\" --notes \"Installable AltOffice packages with local Euro-Office\
         \ editing. Windows x64/ARM64, macOS Intel/Apple Silicon, and Linux x64/ARM64. Windows packages are unsigned; macOS builds are not notarized.\
         \ Based on Euro-Office Lite; upstream notices and corresponding source links are retained. Online collaboration is available separately\
         \ through the AltOffice website.\"\ngh release upload \"$TAG\" release-files/* --clobber\ngh release edit \"$TAG\" --draft=false --prerelease\n"
