@@ -10,7 +10,7 @@ cat > "$HOME/.local/share/applications/amerika-office.desktop" <<EOF
 [Desktop Entry]
 Type=Application
 Name=Makk Office
-Comment=Amerika LLC collaborative office
+Comment=Artemis Softworks LLC collaborative office
 Exec="$TARGET/amerika-office"
 Icon=amerika-office
 Terminal=false

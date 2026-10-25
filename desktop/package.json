@@ -2,8 +2,8 @@
   "name": "amerika-office-desktop",
   "productName": "Makk Office",
   "version": "0.1.0",
-  "description": "Cherry Blossom LLC\u2019s desktop client for its hosted collaborative office",
-  "author": "Cherry Blossom LLC",
+  "description": "Artemis Softworks LLC’s desktop client for its hosted collaborative office",
+  "author": "Artemis Softworks LLC",
   "license": "AGPL-3.0-only",
   "main": "main.cjs",
   "scripts": {
@@ -28,7 +28,8 @@
       ],
       "category": "Office",
       "icon": "assets/icon.png",
-      "executableName": "amerika-office"
+      "executableName": "amerika-office",
+      "maintainer": "Artemis Softworks LLC"
     },
     "win": {
       "target": [
@@ -55,7 +56,8 @@
         "from": "install-linux.sh",
         "to": "install-linux.sh"
       }
-    ]
+    ],
+    "copyright": "Copyright © 2026 Artemis Softworks LLC"
   },
   "devDependencies": {
     "electron": "44.9.2",

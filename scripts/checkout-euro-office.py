@@ -10,6 +10,6 @@ subprocess.run(['git','clone','--no-checkout',lock['repository'],str(args.destin
 subprocess.run(['git','checkout','--detach',lock['commit']],cwd=args.destination,check=True)
 if args.with_submodules:subprocess.run(['git','submodule','update','--init','--recursive'],cwd=args.destination,check=True)
 for rel in ('build/docker-bake.hcl','build/linux/docker-bake.hcl'):
- path=args.destination/rel;text=path.read_text().replace('default = "Euro-Office"','default = "Cherry Blossom LLC"').replace('default = "Desktop Editors"','default = "Makk Office"');path.write_text(text)
+ path=args.destination/rel;text=path.read_text().replace('default = "Euro-Office"','default = "Artemis Softworks LLC"').replace('default = "Desktop Editors"','default = "Makk Office"');path.write_text(text)
 print('Euro-Office source fork prepared at',args.destination)
 print('Build from its build directory: docker buildx bake -f docker-bake.hcl desktop-linux')
