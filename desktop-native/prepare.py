@@ -63,14 +63,20 @@ print('Applied AltOffice branding and preserved upstream notices.')
 companion_css=(overlay/'desktop-native/companion.css').read_text()
 companion_js=(overlay/'desktop-native/companion.js').read_text()
 entries=0
-for html in (root/'src/web-apps/apps').glob('*/main/index.html'):
+for html in (root/'src/web-apps/apps').glob('*/main/index.html*'):
  text=html.read_text()
  if 'asw-companion-style' in text: continue
  text=text.replace('</head>','<style id="asw-companion-style">'+companion_css+'</style></head>')
- text=text.replace('</body>','<script>'+companion_js+'</script></body>')
+ text=text.replace('</body>','<script id="asw-companion-actions">'+companion_js+'</script></body>')
  html.write_text(text);entries+=1
 if entries < 3: raise RuntimeError('Expected document, spreadsheet and presentation native editor entrypoints')
 print('Applied Companion interface and Actions to',entries,'native editors')
 
 mobile_theme=root/'src/web-apps/theme/euro-office/assets/less/overrides/mobile-overrides.less'
 if mobile_theme.exists():mobile_theme.write_text(mobile_theme.read_text()+'\n'+(overlay/'desktop-native/companion-mobile.css').read_text())
+
+# The release build uses .deploy templates. Enforce the interface on final src-dist artifacts, too.
+frontend_script=root/'scripts/build-frontend-prod.mjs'
+text=frontend_script.read_text()
+text+="\nrun(process.execPath,[path.join(projectRoot,'.altstack-source','desktop-native','finalize-interface.mjs'),outputRoot,path.join(projectRoot,'.altstack-source','desktop-native')],projectRoot);\n"
+frontend_script.write_text(text)
