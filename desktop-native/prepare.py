@@ -31,10 +31,10 @@ text=html.read_text('utf-8')
 logo=base64.b64encode((overlay/'desktop/assets/icon.png').read_bytes()).decode()
 text=text.replace('<h1>AltOffice</h1>',f'<h1><img src="data:image/png;base64,{logo}" width="60" height="60" style="vertical-align:middle;border-radius:12px;margin-right:15px" alt="">AltOffice</h1>')
 text=text.replace('</head>','''<style>
-body{background:radial-gradient(ellipse at top,#fff,#e7edf3 70%);color:#233649}
-button,.btn{background:linear-gradient(#fff,#dce7f1);border:1px solid #aebdcb;color:#233649;box-shadow:inset 0 1px white,0 4px 12px #23364915}
-h1{color:#233649;text-shadow:0 1px white}
-.altstack-source{font:12px/1.6 system-ui;color:#52677c;margin:28px auto;max-width:620px;text-align:center}.altstack-source a{color:#1764bd}
+body{background:radial-gradient(ellipse at top,#fff,#f5f0e6 70%);color:#273941}
+button,.btn{background:linear-gradient(#fff,#dce8e5);border:1px solid #c5cec5;color:#273941;box-shadow:inset 0 1px white,0 4px 12px #27394115}
+h1{color:#273941;text-shadow:0 1px white}
+.altstack-source{font:12px/1.6 system-ui;color:#5e7577;margin:28px auto;max-width:620px;text-align:center}.altstack-source a{color:#526e7b}
 </style></head>''')
 text=text.replace('</body>','''<p class="altstack-source">AltOffice by Artemis Softworks LLC. Based on Euro-Office Lite and Euro-Office editors.<br>
 <a href="https://github.com/danecohn/AmerikaOffice/tree/altstack/desktop-releases/desktop-native" target="_blank">Source, changes &amp; licenses</a> Â· Local files stay on this computer.</p></body>''')
