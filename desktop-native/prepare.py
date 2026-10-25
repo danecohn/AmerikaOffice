@@ -5,12 +5,12 @@ import base64,json,shutil
 root=Path.cwd()
 overlay=Path(__file__).resolve().parents[1]
 conf_path=root/'src-tauri/tauri.conf.json'
-conf=json.loads(conf_path.read_text())
+conf=json.loads(conf_path.read_text(encoding='utf-8'))
 conf.update(productName='AltOffice',mainBinaryName='altoffice',identifier='io.altstack.office',version='0.3.0')
 for window in conf['app']['windows']: window['title']='AltOffice'
 conf['bundle']['publisher']='Artemis Softworks LLC'
 conf['bundle']['copyright']='Artemis Softworks LLC; upstream copyrights retained in licenses and source notices.'
-conf_path.write_text(json.dumps(conf,indent=2)+'\n')
+conf_path.write_text(json.dumps(conf,indent=2)+'\n',encoding='utf-8')
 
 # Only change first-party product UI. Keep upstream licenses, dictionaries,
 # converter binaries, compatibility identifiers and third-party source notices.
@@ -50,9 +50,9 @@ if theme.exists():
   if 'logo' in p.name.lower(): shutil.copyfile(overlay/'desktop/assets/logo.svg',p)
  config=theme/'meta/config.json'
  if config.exists():
-  data=json.loads(config.read_text())
+  data=json.loads(config.read_text(encoding='utf-8'))
   data.update(company_name='Artemis Softworks LLC',publisher_name='Artemis Softworks LLC',app_title='AltOffice')
-  config.write_text(json.dumps(data,indent=2)+'\n')
+  config.write_text(json.dumps(data,indent=2)+'\n',encoding='utf-8')
 for filename in ['scripts/get-x2t-ci.sh','scripts/get-x2t-ci.ps1']:
  p=root/filename;text=p.read_text('utf-8')
  text=text.replace('REPO="${GITHUB_REPOSITORY:-delmarguillen/euro-office-lite}"','REPO="delmarguillen/euro-office-lite"').replace('$repo = $env:GITHUB_REPOSITORY','$repo = "delmarguillen/euro-office-lite"')
@@ -60,23 +60,23 @@ for filename in ['scripts/get-x2t-ci.sh','scripts/get-x2t-ci.ps1']:
 print('Applied AltOffice branding and preserved upstream notices.')
 
 # Apply the same editor presentation and command workflow in the offline desktop build.
-companion_css=(overlay/'desktop-native/companion.css').read_text()
-companion_js=(overlay/'desktop-native/companion.js').read_text()
+companion_css=(overlay/'desktop-native/companion.css').read_text(encoding='utf-8')
+companion_js=(overlay/'desktop-native/companion.js').read_text(encoding='utf-8')
 entries=0
 for html in (root/'src/web-apps/apps').glob('*/main/index.html*'):
- text=html.read_text()
+ text=html.read_text(encoding='utf-8')
  if 'asw-companion-style' in text: continue
  text=text.replace('</head>','<style id="asw-companion-style">'+companion_css+'</style></head>')
  text=text.replace('</body>','<script id="asw-companion-actions">'+companion_js+'</script></body>')
- html.write_text(text);entries+=1
+ html.write_text(text,encoding='utf-8');entries+=1
 if entries < 3: raise RuntimeError('Expected document, spreadsheet and presentation native editor entrypoints')
 print('Applied Companion interface and Actions to',entries,'native editors')
 
 mobile_theme=root/'src/web-apps/theme/euro-office/assets/less/overrides/mobile-overrides.less'
-if mobile_theme.exists():mobile_theme.write_text(mobile_theme.read_text()+'\n'+(overlay/'desktop-native/companion-mobile.css').read_text())
+if mobile_theme.exists():mobile_theme.write_text(mobile_theme.read_text(encoding='utf-8')+'\n'+(overlay/'desktop-native/companion-mobile.css').read_text(encoding='utf-8'),encoding='utf-8')
 
 # The release build uses .deploy templates. Enforce the interface on final src-dist artifacts, too.
 frontend_script=root/'scripts/build-frontend-prod.mjs'
-text=frontend_script.read_text()
+text=frontend_script.read_text(encoding='utf-8')
 text+="\nrun(process.execPath,[path.join(projectRoot,'.altstack-source','desktop-native','finalize-interface.mjs'),outputRoot,path.join(projectRoot,'.altstack-source','desktop-native')],projectRoot);\n"
-frontend_script.write_text(text)
+frontend_script.write_text(text,encoding='utf-8')
