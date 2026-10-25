@@ -1,7 +1,7 @@
 {
   "name": "AltOffice",
   "short_name": "AltOffice",
-  "description": "An AltStack LLC workspace.",
+  "description": "An Artemis Softworks LLC workspace.",
   "id": "/",
   "start_url": "/",
   "display": "standalone",

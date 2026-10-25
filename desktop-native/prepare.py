@@ -8,7 +8,7 @@ conf_path=root/'src-tauri/tauri.conf.json'
 conf=json.loads(conf_path.read_text())
 conf.update(productName='AltOffice',mainBinaryName='altoffice',identifier='io.altstack.office',version='0.2.0')
 for window in conf['app']['windows']: window['title']='AltOffice'
-conf['bundle']['publisher']='AltStack LLC'
+conf['bundle']['publisher']='Artemis Softworks LLC'
 conf['bundle']['copyright']='AltStack LLC; upstream copyrights retained in licenses and source notices.'
 conf_path.write_text(json.dumps(conf,indent=2)+'\n')
 
@@ -36,12 +36,12 @@ button,.btn{background:linear-gradient(#fff,#dce7f1);border:1px solid #aebdcb;co
 h1{color:#233649;text-shadow:0 1px white}
 .altstack-source{font:12px/1.6 system-ui;color:#52677c;margin:28px auto;max-width:620px;text-align:center}.altstack-source a{color:#1764bd}
 </style></head>''')
-text=text.replace('</body>','''<p class="altstack-source">AltOffice by AltStack LLC. Based on Euro-Office Lite and Euro-Office editors.<br>
+text=text.replace('</body>','''<p class="altstack-source">AltOffice by Artemis Softworks LLC. Based on Euro-Office Lite and Euro-Office editors.<br>
 <a href="https://github.com/danecohn/AmerikaOffice/tree/altstack/desktop-releases/desktop-native" target="_blank">Source, changes &amp; licenses</a> Â· Local files stay on this computer.</p></body>''')
 html.write_text(text,encoding='utf-8')
 
 build=root/'scripts/build-frontend-prod.mjs'
-text=build.read_text('utf-8').replace("COMPANY_NAME: 'Euro-Office'","COMPANY_NAME: 'AltStack LLC'").replace("PRODUCT_NAME: 'Euro-Office Lite'","PRODUCT_NAME: 'AltOffice'").replace("PUBLISHER_NAME: 'Euro-Office contributors'","PUBLISHER_NAME: 'AltStack LLC'")
+text=build.read_text('utf-8').replace("COMPANY_NAME: 'Euro-Office'","COMPANY_NAME: 'Artemis Softworks LLC'").replace("PRODUCT_NAME: 'Euro-Office Lite'","PRODUCT_NAME: 'AltOffice'").replace("PUBLISHER_NAME: 'Euro-Office contributors'","PUBLISHER_NAME: 'Artemis Softworks LLC'")
 # Retain the original APP_COPYRIGHT and upstream About/legal blocks.
 build.write_text(text,encoding='utf-8')
 theme=root/'src/web-apps/theme/euro-office'
@@ -51,7 +51,7 @@ if theme.exists():
  config=theme/'meta/config.json'
  if config.exists():
   data=json.loads(config.read_text())
-  data.update(company_name='AltStack LLC',publisher_name='AltStack LLC',app_title='AltOffice')
+  data.update(company_name='Artemis Softworks LLC',publisher_name='Artemis Softworks LLC',app_title='AltOffice')
   config.write_text(json.dumps(data,indent=2)+'\n')
 for filename in ['scripts/get-x2t-ci.sh','scripts/get-x2t-ci.ps1']:
  p=root/filename;text=p.read_text('utf-8')
