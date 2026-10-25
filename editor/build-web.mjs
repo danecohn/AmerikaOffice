@@ -14,4 +14,7 @@ writeFileSync(file,source.replace(needle,`const running = [];
     }`));
 const result=spawnSync(process.execPath,['scripts/build-pipeline.js'],{stdio:'inherit',env:process.env});
 if(result.error)throw result.error;
-process.exit(result.status??1);
+if(result.status!==0)process.exit(result.status??1);
+const final=spawnSync(process.execPath,['/tmp/finalize-interface.mjs',process.env.BUILD_ROOT||'/out','/tmp/brand'],{stdio:'inherit'});
+if(final.error)throw final.error;
+process.exit(final.status??1);

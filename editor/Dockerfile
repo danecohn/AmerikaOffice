@@ -7,6 +7,7 @@ WORKDIR /src/build
 RUN npm ci
 COPY editor/prepare-theme.mjs /tmp/prepare-theme.mjs
 COPY editor/build-web.mjs /tmp/build-web.mjs
+COPY editor/finalize-interface.mjs /tmp/finalize-interface.mjs
 COPY editor/brand /tmp/brand
 RUN node /tmp/prepare-theme.mjs /src
 WORKDIR /src/translation

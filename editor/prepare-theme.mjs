@@ -23,13 +23,13 @@ const companionCSS=readFileSync(join(dirname(process.argv[3]||'/tmp/brand/logo.s
 const companionJS=readFileSync(join(dirname(process.argv[3]||'/tmp/brand/logo.svg'),'companion.js'),'utf8');
 let interfaces=0;
 for(const app of readdirSync(join(root,'apps'))){for(const mode of ['main','mobile']){
- const html=join(root,'apps',app,mode,'index.html');if(!existsSync(html))continue;
+ for(const entry of ['index.html','index.html.deploy']){const html=join(root,'apps',app,mode,entry);if(!existsSync(html))continue;
  let source=readFileSync(html,'utf8');if(source.includes('asw-companion-style'))continue;
  source=source.replace(/maximum-scale=1\.0,?\s*|minimum-scale=1\.0,?\s*|user-scalable=no,?\s*/g,'');
  source=source.replace('</head>','<style id="asw-companion-style">'+companionCSS+'</style></head>');
- if(mode==='main')source=source.replace('</body>','<script>'+companionJS+'</script></body>');
+ if(mode==='main')source=source.replace('</body>','<script id="asw-companion-actions">'+companionJS+'</script></body>');
  writeFileSync(html,source);interfaces++;
-}}
+}}}
 if(interfaces<3)throw Error('Expected document, spreadsheet and presentation editor entrypoints.');
 console.log('Applied Artemis Companion surfaces and Actions to '+interfaces+' editor interfaces.');
 
