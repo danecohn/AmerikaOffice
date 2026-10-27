@@ -1,7 +1,9 @@
-# Cohnsoft Office branding
+# Vigil Office branding
 
-A product of Cohnsoft. Cohnsoft was founded by Demetria Althea Cohn.
+A product of VigilTech, vigiltech.org.
 
-The canonical identity, local fonts and Golden Gate tokens are vendored unchanged under `public/brand/cohnsoft/` and `editor/brand/cohnsoft/`, pinned to cohnsoftassets commit `752e894f90f1e58e62ae466352cb03c8bfd7d703`. Each manifest records SHA-256 digests. Legacy first-party artwork remains in source history/compatibility paths and is not loaded by the new interface.
+The VigilTech design system (tokens, Vigil Sans, mark, glyph and the Write, Sheets and Slides product icons) is vendored under `public/brand/vigiltech/` for the portal and `editor/brand/vigiltech/` for the editor service. The portal skin is `public/style.css`; the editor skin is `editor/brand/companion.css`, `editor/brand/companion-mobile.css` and `editor/brand/companion.js`.
 
-Full product name: Cohnsoft Office. Technical IDs, stored AltOffice paths, API routes, OAuth contracts, secrets and existing release artifacts remain compatible. Upstream Euro-Office and ONLYOFFICE legal notices remain intact.
+Product names: Vigil Office (portal and desktop), Vigil Write, Vigil Sheets, Vigil Slides. Shared storage is shown to people as Vigil Drive.
+
+Technical IDs, stored `AltOffice` paths, API routes, OAuth contracts, secrets, storage keys, the `amerika-office` desktop executable and bundle ID, and existing release artifact names are unchanged for compatibility. Upstream Euro-Office and ONLYOFFICE legal notices remain intact.

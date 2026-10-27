@@ -37,7 +37,7 @@ export function createOffice(options:any={}){
  const cookie=(req:Request,name:string)=>{const part=(req.headers.get('cookie')||'').split(';').map(x=>x.trim()).find(x=>x.startsWith(name+'='));return part?.slice(name.length+1)||'';};
  const cookieString=(name:string,value:string,age:number)=>`${name}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${age}${origin.startsWith('https:')?'; Secure':''}`;
  const session=(req:Request)=>q('SELECT u.* FROM sessions s JOIN users u ON u.id=s.user WHERE s.hash=? AND s.expires>?').get(hash(cookie(req,'ao_session')),Date.now()) as any;
- const user=(req:Request)=>session(req)||fail(401,'Sign in to Cohnsoft Office.');
+ const user=(req:Request)=>session(req)||fail(401,'Sign in to Vigil Office.');
  const doc=(id:string)=>q('SELECT * FROM documents WHERE id=? AND deleted=0').get(id) as any||fail(404,'Document not found.');
  const access=(id:string,u:any,write=false)=>{const d=doc(id);const role=d.owner===u.id?'owner':(q('SELECT role FROM members WHERE doc=? AND user=?').get(id,u.id) as any)?.role;if(!role||(write&&role==='view'))fail(403,'You do not have permission for this document.');return {...d,role};};
  const owner=(id:string,u:any)=>{const d=access(id,u);if(d.role!=='owner')fail(403,'Only the owner can change sharing or delete this document.');return d;};
@@ -72,14 +72,14 @@ export function createOffice(options:any={}){
  const kind=(ext:string)=>['xlsx','xls','ods','csv'].includes(ext)?'cell':['pptx','ppt','odp'].includes(ext)?'slide':ext==='pdf'?'pdf':'word';
  const sign=(claims:any)=>jwt({...claims,exp:Math.floor(Date.now()/1000)+24*3600},secret);
  const verify=(value:string,scope:string,id:string)=>{let c:any;try{c=verifyJwt(value,secret);}catch{fail(403,'This document link has expired. Reopen it from Office.');}if(c.scope!==scope||c.id!==id)fail(403,'Invalid document link.');return c;};
- const socialCall=async(path:string,data:any)=>{const res=await net(social+'/api/'+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data),signal:AbortSignal.timeout(15000)});const v=await res.json() as any;if(!res.ok)fail(res.status>=500?502:res.status,v.error||'Cohnsoft account sign-in is unavailable.');return v;};
+ const socialCall=async(path:string,data:any)=>{const res=await net(social+'/api/'+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data),signal:AbortSignal.timeout(15000)});const v=await res.json() as any;if(!res.ok)fail(res.status>=500?502:res.status,v.error||'Vigil account sign-in is unavailable.');return v;};
  async function handle(req:Request){
   const url=new URL(req.url),path=url.pathname,method=req.method;
   if(['GET','HEAD'].includes(method)&&url.hostname==='drive.altstack.org'&&!path.startsWith('/api/')&&!path.startsWith('/files/')&&!path.startsWith('/callbacks/'))return Response.redirect(origin+url.pathname+url.search,302);
   if(path==='/downloads')return Response.redirect(social+'/downloads/office',302);
-  if(path==='/healthz')return json({ok:true,product:'Cohnsoft Office'});
+  if(path==='/healthz')return json({ok:true,product:'Vigil Office'});
   if(path==='/api/internal/warehouse-prepare'){
-   if(method!=='GET')fail(405,'Use GET.');const key=env.WAREHOUSE_SERVICE_SECRET;if(!key||key.length<32||!cloud)fail(503,'Warehouse migration is not configured.');
+   if(method!=='GET')fail(405,'Use GET.');const key=env.WAREHOUSE_SERVICE_SECRET;if(!key||key.length<32||!cloud)fail(503,'Vigil Drive migration is not configured.');
    const time=req.headers.get('x-altstack-time'),signature=req.headers.get('x-altstack-signature');if(!time||!/^\d{13}$/.test(time)||Math.abs(Date.now()-Number(time))>60000||!signature||!/^[-_A-Za-z0-9]{43}$/.test(signature))fail(401,'Invalid service authorization.');
    const expected=createHmac('sha256',key).update(time+'\nGET\n'+url.pathname+url.search).digest('base64url');if(!timingSafeEqual(Buffer.from(signature),Buffer.from(expected)))fail(401,'Invalid service authorization.');
    const actor=url.searchParams.get('actor');if(!actor||actor.length>256)fail(400,'Choose an account.');await planFor(actor);await cloud.migrate(actor);return json({ready:true});
@@ -108,11 +108,11 @@ export function createOffice(options:any={}){
   }
   if(path==='/api/logout'&&method==='POST'){csrf(req);q('DELETE FROM sessions WHERE hash=?').run(hash(cookie(req,'ao_session')));return new Response('{}',{headers:{'Content-Type':'application/json','Set-Cookie':cookieString('ao_session','',0)}});}
   if(path==='/api/warehouse/files'&&method==='GET'){
-   const u=user(req);await planFor(u.id);if(!cloud)fail(503,'Warehouse is not connected yet.');const path=url.searchParams.get('path')||'';
+   const u=user(req);await planFor(u.id);if(!cloud)fail(503,'Vigil Drive is not connected yet.');const path=url.searchParams.get('path')||'';
    return json({files:(await cloud.list(u.id,path)).filter((f:any)=>!f.path.includes('/.history')&&(f.directory||allowed.has(f.name.split('.').pop()?.toLowerCase())))});
   }
   if(path==='/api/warehouse/open'&&method==='POST'){
-   csrf(req);const u=user(req);await planFor(u.id);if(!cloud)fail(503,'Warehouse is not connected yet.');const b=await body(req);if(typeof b.path!=='string')fail(400,'Choose a Warehouse file.');
+   csrf(req);const u=user(req);await planFor(u.id);if(!cloud)fail(503,'Vigil Drive is not connected yet.');const b=await body(req);if(typeof b.path!=='string')fail(400,'Choose a Vigil Drive file.');
    const imported=await cloud.import(u.id,b.path),ext=imported.state.name.split('.').pop()?.toLowerCase()||'';if(!allowed.has(ext))fail(400,'Unsupported document format.');
    const existing=q('SELECT * FROM documents WHERE owner=? AND warehouse_id=? AND deleted=0').get(u.id,imported.state.id) as any;
    if(existing){if(existing.warehouse_path!==imported.state.path){q('UPDATE documents SET warehouse_path=? WHERE id=?').run(imported.state.path,existing.id);q('UPDATE versions SET warehouse_path=? WHERE doc=? AND revision=?').run(imported.state.path,existing.id,existing.revision);}return json({document:publicDoc(await cloud.open(doc(existing.id)))});}
@@ -199,4 +199,4 @@ export function createOffice(options:any={}){
  }
  return {fetch:fetchHandler,db,close:()=>db.close()};
 }
-if(import.meta.main){const app=createOffice();Bun.serve({port:Number(process.env.PORT||3000),hostname:'0.0.0.0',maxRequestBodySize:26*1024*1024,fetch:app.fetch});console.log('Cohnsoft Office is listening.');}
+if(import.meta.main){const app=createOffice();Bun.serve({port:Number(process.env.PORT||3000),hostname:'0.0.0.0',maxRequestBodySize:26*1024*1024,fetch:app.fetch});console.log('Vigil Office is listening.');}

@@ -1,6 +1,6 @@
-# Cohnsoft Office desktop
+# Vigil Office desktop
 
-This is a desktop client for the self-hosted web application, not an offline copy of the Euro-Office engine. Editing, account registration and collaboration use Cohnsoft's Railway services.
+This is a desktop client for the self-hosted web application, not an offline copy of the Euro-Office engine. Editing, account registration and collaboration use VigilTech's Railway services.
 
 Run `npm ci` and `npm run dist -- --linux --arm64` (or the appropriate OS and architecture). Electron 44.9.2 and electron-builder 26.15.3 are pinned by the lockfile. Web content runs with Node integration disabled, context isolation and the Chromium sandbox enabled. External links and account approval open in your system browser. Downloads use a native save dialog.
 

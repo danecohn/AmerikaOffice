@@ -9,12 +9,12 @@ cp "$TARGET/resources/icon.png" "$HOME/.local/share/icons/hicolor/512x512/apps/a
 cat > "$HOME/.local/share/applications/amerika-office.desktop" <<EOF
 [Desktop Entry]
 Type=Application
-Name=Cohnsoft Office
-Comment=Cohnsoft collaborative office
+Name=Vigil Office
+Comment=VigilTech collaborative office
 Exec="$TARGET/amerika-office"
 Icon=amerika-office
 Terminal=false
 Categories=Office;
 StartupWMClass=amerika-office
 EOF
-printf '%s\n' 'Cohnsoft Office installed. Open it from your application launcher.'
+printf '%s\n' 'Vigil Office installed. Open it from your application launcher.'
