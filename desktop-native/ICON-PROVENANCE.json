@@ -1,0 +1,13 @@
+{
+  "productKit": "https://github.com/danecohn/vigilicons/tree/main/products/office",
+  "companyMark": "https://github.com/danecohn/cohnsoftassets",
+  "sha256": {
+    "desktop/assets/icon.png": "3fe36ec63de930d6f2ed64dfc7007393248a3fac48064c74a116aa899cdac546",
+    "desktop/assets/icon-32.png": "18efa7b20ec6a1f450adfd5b046d316a7ee4181af29225318c9edcc7d7f1c50e",
+    "desktop/assets/icon-128.png": "8cd560e5c17e0d8de92244f094f96cdcd34a9a6579a472199f378473193f7075",
+    "desktop/assets/icon-256.png": "1c076d9588ebb2706967adbf0ba94b1d87de99342f95d7f1e2565dbf5027d39a",
+    "desktop/assets/icon.icns": "707b2ae7800a0229472da054085711f8ef025cf430fd651d38857dd76ca6ce86",
+    "desktop/assets/icon.ico": "a9221355208b8f8d5c65b65d24db98f8c66521cfa9b182eaf6e7d1d0cb1c30f3",
+    "desktop/assets/logo.svg": "d56ebead7c4691b82cfd62db3970fb7a5ad74163f08378946323a135028fe58c"
+  }
+}

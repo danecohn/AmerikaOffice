@@ -15,5 +15,5 @@ for target,platform,arch,extension in matrix:
  (out/(name+'.sha256')).write_text(digest+'  '+name+'\n')
  manifest.append(dict(platform=platform,arch=arch,name=name,sha256=digest,size=dest.stat().st_size))
 (out/'AltOffice-downloads.json').write_text(json.dumps(manifest,indent=2)+'\n')
-(out/'SOURCE.txt').write_text('Cohnsoft Office 0.4.0 by Cohnsoft\nComplete downstream source/build overlay: https://github.com/danecohn/AmerikaOffice/tree/'+os.environ['GITHUB_SHA']+'/desktop-native\nPinned Euro-Office Lite source: https://github.com/delmarguillen/euro-office-lite/tree/41558fdbff7b5248f5f302b3b2b6a189178a447f\nSubmodule commits are recorded by that upstream commit. Original licenses and converter source notices are retained.\n')
+(out/'SOURCE.txt').write_text('Vigil Office 0.5.0 by VigilTech\nComplete downstream source/build overlay: https://github.com/danecohn/AmerikaOffice/tree/'+os.environ['GITHUB_SHA']+'/desktop-native\nPinned Euro-Office Lite source: https://github.com/delmarguillen/euro-office-lite/tree/41558fdbff7b5248f5f302b3b2b6a189178a447f\nSubmodule commits are recorded by that upstream commit. Original licenses and converter source notices are retained.\n')
 print('Prepared six installers and SHA-256 files for publication.')
