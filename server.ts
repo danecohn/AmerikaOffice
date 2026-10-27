@@ -18,6 +18,7 @@ export function verifyJwt(value:string,secret:string){
 }
 export function createOffice(options:any={}){
  const env=options.env||process.env,dir=env.DATA_DIR||'./data',origin=env.PUBLIC_ORIGIN||'http://localhost:3000',docs=env.DOCS_URL||'https://editor.altstack.org',social=env.SOCIAL_ORIGIN||'https://altstack.org';
+ const base=(env.PUBLIC_BASE_PATH||'').replace(/\/$/,'');if(base&&!/^\/[a-z][a-z0-9-]*$/.test(base))throw Error('Invalid PUBLIC_BASE_PATH');
  const secret=env.OFFICE_SECRET,editorSecret=env.JWT_SECRET;
  if(!secret||secret.length<32||!editorSecret||editorSecret.length<32)throw Error('Set independent OFFICE_SECRET and JWT_SECRET, at least 32 characters each.');
  mkdirSync(join(dir,'files'),{recursive:true});
@@ -41,7 +42,7 @@ export function createOffice(options:any={}){
  const doc=(id:string)=>q('SELECT * FROM documents WHERE id=? AND deleted=0').get(id) as any||fail(404,'Document not found.');
  const access=(id:string,u:any,write=false)=>{const d=doc(id);const role=d.owner===u.id?'owner':(q('SELECT role FROM members WHERE doc=? AND user=?').get(id,u.id) as any)?.role;if(!role||(write&&role==='view'))fail(403,'You do not have permission for this document.');return {...d,role};};
  const owner=(id:string,u:any)=>{const d=access(id,u);if(d.role!=='owner')fail(403,'Only the owner can change sharing or delete this document.');return d;};
- const browserOrigins=new Set([origin,...(env.BROWSER_ORIGIN_ALIASES||'').split(',').map((v:string)=>v.trim()).filter(Boolean)]);
+ const browserOrigins=new Set([new URL(origin).origin,...(env.BROWSER_ORIGIN_ALIASES||'').split(',').map((v:string)=>v.trim()).filter(Boolean)]);
  const csrf=(req:Request)=>{if(!browserOrigins.has(req.headers.get('origin')||''))fail(403,'Request origin rejected.');};
  const rate=(key:string,max=60)=>{const now=Date.now();for(const[k,v]of rates)if(v.until<now)rates.delete(k);const r=rates.get(key)||{n:0,until:now+3600000};r.n++;rates.set(key,r);if(r.n>max)fail(429,'Too many requests. Please try again later.');};
  const body=async(req:Request,limit=65536)=>{const raw=await req.text();if(Buffer.byteLength(raw)>limit)fail(413,'Request too large.');try{return JSON.parse(raw);}catch{fail(400,'Invalid JSON.');}};
@@ -74,7 +75,7 @@ export function createOffice(options:any={}){
  const verify=(value:string,scope:string,id:string)=>{let c:any;try{c=verifyJwt(value,secret);}catch{fail(403,'This document link has expired. Reopen it from Office.');}if(c.scope!==scope||c.id!==id)fail(403,'Invalid document link.');return c;};
  const socialCall=async(path:string,data:any)=>{const res=await net(social+'/api/'+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data),signal:AbortSignal.timeout(15000)});const v=await res.json() as any;if(!res.ok)fail(res.status>=500?502:res.status,v.error||'Vigil account sign-in is unavailable.');return v;};
  async function handle(req:Request){
-  const url=new URL(req.url),path=url.pathname,method=req.method;
+  const url=new URL(req.url);if(base&&(url.pathname===base||url.pathname.startsWith(base+'/')))url.pathname=url.pathname.slice(base.length)||'/';const path=url.pathname,method=req.method;
   if(['GET','HEAD'].includes(method)&&url.hostname==='drive.altstack.org'&&!path.startsWith('/api/')&&!path.startsWith('/files/')&&!path.startsWith('/callbacks/'))return Response.redirect(origin+url.pathname+url.search,302);
   if(path==='/downloads')return Response.redirect(social+'/downloads/office',302);
   if(path==='/healthz')return json({ok:true,product:'Vigil Office'});
@@ -84,7 +85,7 @@ export function createOffice(options:any={}){
    const expected=createHmac('sha256',key).update(time+'\nGET\n'+url.pathname+url.search).digest('base64url');if(!timingSafeEqual(Buffer.from(signature),Buffer.from(expected)))fail(401,'Invalid service authorization.');
    const actor=url.searchParams.get('actor');if(!actor||actor.length>256)fail(400,'Choose an account.');await planFor(actor);await cloud.migrate(actor);return json({ready:true});
   }
-  if(path==='/api/me'&&method==='GET'){const u=session(req);const plan=u?await planFor(u.id):null;return json({user:u||null,docsUrl:docs,maxFileBytes:maxFile,quotaBytes:u?quotaFor(u.id):quota,plan:plan?.plus?'plus':'free',warehouseOrigin:env.WAREHOUSE_ORIGIN||null,sharedStorage:!!cloud});}
+  if(path==='/api/me'&&method==='GET'){const u=session(req);const plan=u?await planFor(u.id):null;return json({user:u||null,docsUrl:docs,maxFileBytes:maxFile,quotaBytes:u?quotaFor(u.id):quota,plan:plan?.plus?'plus':'free',warehouseOrigin:env.PUBLIC_DRIVE_ORIGIN||env.WAREHOUSE_ORIGIN||null,sharedStorage:!!cloud});}
   if(path==='/api/auth/start'&&method==='POST'){
    csrf(req);rate('signin:'+ (req.headers.get('x-railway-client-ip')||'unknown'),15);
    const verifier=randomBytes(48).toString('base64url'),challenge=createHash('sha256').update(verifier).digest('base64url');const result=await socialCall('desktop/start',{challenge});
@@ -186,7 +187,12 @@ export function createOffice(options:any={}){
   }
   if(method==='GET'){
    let asset=assets[path];if(path==='/'||path==='/join'||path==='/warehouse-open'||/^\/edit\/[a-f0-9]{32}$/.test(path))asset=assets['/index.html'];
-   if(asset&&!path.startsWith('/templates/'))return new Response(Buffer.from(asset.data,'base64'),{headers:{'Content-Type':asset.type}});
+   if(asset&&!path.startsWith('/templates/')){
+    let data=Buffer.from(asset.data,'base64');
+    if(base&&/html/.test(asset.type)){let html=data.toString().replace(/(href|src|action)="\/(?!\/)/g,'$1="'+base+'/');html=html.replace('<head>','<head><meta name="vigil-base" content="'+base+'">');data=Buffer.from(html);}
+    if(base&&path==='/manifest.webmanifest'){const m=JSON.parse(data.toString());for(const k of ['id','start_url','scope'])if(typeof m[k]==='string'&&m[k].startsWith('/'))m[k]=base+m[k];for(const i of m.icons||[])if(i.src?.startsWith('/'))i.src=base+i.src;data=Buffer.from(JSON.stringify(m));}
+    return new Response(data,{headers:{'Content-Type':asset.type}});
+   }
   }
   fail(404,'Not found.');
  }
