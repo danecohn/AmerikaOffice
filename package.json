@@ -12,5 +12,8 @@
   "engines": {
     "bun": ">=1.4.3"
   },
-  "author": "Artemis Softworks LLC"
+  "dependencies": {
+    "fast-xml-parser": "5.11.2"
+  },
+  "author": "Cohnsoft"
 }

@@ -3,11 +3,11 @@ import {join,dirname} from 'node:path';
 const root=process.argv[2];if(!root)throw Error('Supply the Euro-Office web-apps source directory.');
 const theme=join(root,'theme/altoffice');cpSync(join(root,'theme/euro-office'),theme,{recursive:true});
 const config=JSON.parse(readFileSync(join(theme,'meta/config.json'),'utf8'));
-Object.assign(config,{company_name:'Artemis Softworks LLC',publisher_name:'Artemis Softworks LLC',publisher_url:'https://altstack.org',app_title:'AltOffice',support_url:'https://github.com/danecohn/AmerikaOffice/issues',help_url:'https://github.com/danecohn/AmerikaOffice',attribution:'AltOffice is based on Euro-Office, which is based on ONLYOFFICE by Ascensio System SIA.'});
+Object.assign(config,{company_name:'Cohnsoft',publisher_name:'Cohnsoft',publisher_url:'https://www.amerika.social/cohnsoft',app_title:'Cohnsoft Office',support_url:'https://github.com/danecohn/AmerikaOffice/issues',help_url:'https://github.com/danecohn/AmerikaOffice',attribution:'Cohnsoft Office is based on Euro-Office, which is based on ONLYOFFICE by Ascensio System SIA.'});
 writeFileSync(join(theme,'meta/config.json'),JSON.stringify(config,null,2));
 const aboutPath=join(theme,'meta/about.json'),about=JSON.parse(readFileSync(aboutPath,'utf8'));
-about.blocks.unshift({text:'AltOffice is the Artemis Softworks LLC edition of Euro-Office. Modified on {buildDate}. Artemis Softworks LLC is not affiliated with Euro-Office or Ascensio System SIA.'});
-about.blocks.push({text:'AltOffice modifications, build scripts, exact upstream commits, and corresponding source: [AltOffice source]({downstreamSourceUrl}).'});
+about.blocks.unshift({text:'Cohnsoft Office is the Cohnsoft edition of Euro-Office. Modified on {buildDate}. Cohnsoft is not affiliated with Euro-Office or Ascensio System SIA.'});
+about.blocks.push({text:'Cohnsoft Office modifications, build scripts, exact upstream commits, and corresponding source: [Cohnsoft Office source]({downstreamSourceUrl}).'});
 writeFileSync(aboutPath,JSON.stringify(about,null,2));
 const renderer=join(root,'build/about-html.mjs'),renderSource=readFileSync(renderer,'utf8');
 if(!renderSource.includes('const urls = {'))throw Error('Review the pinned About renderer before patching source links.');
@@ -15,8 +15,8 @@ writeFileSync(renderer,renderSource.replace('const urls = {',"const urls = { dow
 const logo=readFileSync(process.argv[3]||'/tmp/brand/logo.svg','utf8');
 function logos(dir){for(const name of readdirSync(dir)){const p=join(dir,name);if(statSync(p).isDirectory())logos(p);else if(/\.svg$/.test(name)&&/logo/i.test(name))writeFileSync(p,logo);}}
 logos(join(theme,'assets/img'));
-const less=join(theme,'assets/less/theme.less');writeFileSync(less,readFileSync(less,'utf8').replace('@nc-primary: #0082c9;','@nc-primary: #0066cc;'));
-console.log('Prepared the AltOffice theme from the pinned Euro-Office theme.');
+const less=join(theme,'assets/less/theme.less');writeFileSync(less,readFileSync(less,'utf8').replace('@nc-primary: #0082c9;','@nc-primary: #0a7a37;'));
+console.log('Prepared the Cohnsoft Office theme from the pinned Euro-Office theme.');
 
 // Apply the actual editor interface, not only the distribution logo.
 const companionCSS=readFileSync(join(dirname(process.argv[3]||'/tmp/brand/logo.svg'),'companion.css'),'utf8');
@@ -31,7 +31,7 @@ for(const app of readdirSync(join(root,'apps'))){for(const mode of ['main','mobi
  writeFileSync(html,source);interfaces++;
 }}}
 if(interfaces<3)throw Error('Expected document, spreadsheet and presentation editor entrypoints.');
-console.log('Applied Artemis Companion surfaces and Actions to '+interfaces+' editor interfaces.');
+console.log('Applied Cohnsoft Companion surfaces and Actions to '+interfaces+' editor interfaces.');
 
 const mobileTheme=join(theme,'assets/less/overrides/mobile-overrides.less');
 writeFileSync(mobileTheme,readFileSync(mobileTheme,'utf8')+'\n'+readFileSync(join(dirname(process.argv[3]||'/tmp/brand/logo.svg'),'companion-mobile.css'),'utf8'));

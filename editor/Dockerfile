@@ -22,6 +22,6 @@ USER root
 COPY --from=web-build /out/web-apps/ /var/www/euro-office/documentserver/web-apps/
 COPY editor/start.sh /usr/local/bin/altoffice-start
 RUN chmod 755 /usr/local/bin/altoffice-start
-LABEL org.opencontainers.image.title="AltOffice Editor" org.opencontainers.image.source="https://github.com/danecohn/AmerikaOffice" org.opencontainers.image.licenses="AGPL-3.0-only"
+LABEL org.opencontainers.image.title="Cohnsoft Office Editor" org.opencontainers.image.source="https://github.com/danecohn/AmerikaOffice" org.opencontainers.image.licenses="AGPL-3.0-only"
 ENV JWT_ENABLED=true JWT_IN_BODY=true EXAMPLE_ENABLED=false ADMINPANEL_ENABLED=false WOPI_ENABLED=false ALLOW_PRIVATE_IP_ADDRESS=false ALLOW_META_IP_ADDRESS=false NGINX_WORKER_PROCESSES=2 NGINX_WORKER_CONNECTIONS=1024
 ENTRYPOINT ["/usr/local/bin/altoffice-start"]
