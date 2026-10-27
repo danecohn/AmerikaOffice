@@ -37,7 +37,7 @@ export function createOffice(options:any={}){
  const cookie=(req:Request,name:string)=>{const part=(req.headers.get('cookie')||'').split(';').map(x=>x.trim()).find(x=>x.startsWith(name+'='));return part?.slice(name.length+1)||'';};
  const cookieString=(name:string,value:string,age:number)=>`${name}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${age}${origin.startsWith('https:')?'; Secure':''}`;
  const session=(req:Request)=>q('SELECT u.* FROM sessions s JOIN users u ON u.id=s.user WHERE s.hash=? AND s.expires>?').get(hash(cookie(req,'ao_session')),Date.now()) as any;
- const user=(req:Request)=>session(req)||fail(401,'Sign in to AltOffice.');
+ const user=(req:Request)=>session(req)||fail(401,'Sign in to Cohnsoft Office.');
  const doc=(id:string)=>q('SELECT * FROM documents WHERE id=? AND deleted=0').get(id) as any||fail(404,'Document not found.');
  const access=(id:string,u:any,write=false)=>{const d=doc(id);const role=d.owner===u.id?'owner':(q('SELECT role FROM members WHERE doc=? AND user=?').get(id,u.id) as any)?.role;if(!role||(write&&role==='view'))fail(403,'You do not have permission for this document.');return {...d,role};};
  const owner=(id:string,u:any)=>{const d=access(id,u);if(d.role!=='owner')fail(403,'Only the owner can change sharing or delete this document.');return d;};
@@ -72,12 +72,12 @@ export function createOffice(options:any={}){
  const kind=(ext:string)=>['xlsx','xls','ods','csv'].includes(ext)?'cell':['pptx','ppt','odp'].includes(ext)?'slide':ext==='pdf'?'pdf':'word';
  const sign=(claims:any)=>jwt({...claims,exp:Math.floor(Date.now()/1000)+24*3600},secret);
  const verify=(value:string,scope:string,id:string)=>{let c:any;try{c=verifyJwt(value,secret);}catch{fail(403,'This document link has expired. Reopen it from Office.');}if(c.scope!==scope||c.id!==id)fail(403,'Invalid document link.');return c;};
- const socialCall=async(path:string,data:any)=>{const res=await net(social+'/api/'+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data),signal:AbortSignal.timeout(15000)});const v=await res.json() as any;if(!res.ok)fail(res.status>=500?502:res.status,v.error||'AltStack account sign-in is unavailable.');return v;};
+ const socialCall=async(path:string,data:any)=>{const res=await net(social+'/api/'+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data),signal:AbortSignal.timeout(15000)});const v=await res.json() as any;if(!res.ok)fail(res.status>=500?502:res.status,v.error||'Cohnsoft account sign-in is unavailable.');return v;};
  async function handle(req:Request){
   const url=new URL(req.url),path=url.pathname,method=req.method;
   if(['GET','HEAD'].includes(method)&&url.hostname==='drive.altstack.org'&&!path.startsWith('/api/')&&!path.startsWith('/files/')&&!path.startsWith('/callbacks/'))return Response.redirect(origin+url.pathname+url.search,302);
   if(path==='/downloads')return Response.redirect(social+'/downloads/office',302);
-  if(path==='/healthz')return json({ok:true,product:'AltOffice'});
+  if(path==='/healthz')return json({ok:true,product:'Cohnsoft Office'});
   if(path==='/api/internal/warehouse-prepare'){
    if(method!=='GET')fail(405,'Use GET.');const key=env.WAREHOUSE_SERVICE_SECRET;if(!key||key.length<32||!cloud)fail(503,'Warehouse migration is not configured.');
    const time=req.headers.get('x-altstack-time'),signature=req.headers.get('x-altstack-signature');if(!time||!/^\d{13}$/.test(time)||Math.abs(Date.now()-Number(time))>60000||!signature||!/^[-_A-Za-z0-9]{43}$/.test(signature))fail(401,'Invalid service authorization.');
@@ -199,4 +199,4 @@ export function createOffice(options:any={}){
  }
  return {fetch:fetchHandler,db,close:()=>db.close()};
 }
-if(import.meta.main){const app=createOffice();Bun.serve({port:Number(process.env.PORT||3000),hostname:'0.0.0.0',maxRequestBodySize:26*1024*1024,fetch:app.fetch});console.log('AltOffice is listening.');}
+if(import.meta.main){const app=createOffice();Bun.serve({port:Number(process.env.PORT||3000),hostname:'0.0.0.0',maxRequestBodySize:26*1024*1024,fetch:app.fetch});console.log('Cohnsoft Office is listening.');}

@@ -13,8 +13,8 @@ export function createWarehouse({origin,credentials,fetch:net=fetch,maxFile=25*1
  async function request(id:string,path:string,method:string,headers:Record<string,string>={},body?:Uint8Array|string){
   const c=await credentials(id);if(new URL(c.warehouseOrigin).origin!==base.origin||!/^ast_[a-f0-9]{40}$/.test(c.warehouseUid)||!c.warehouseToken)error(503,'Warehouse credentials are unavailable.');
   const response=await net(new URL(root(c.warehouseUid)+encoded(path),base),{method,headers:{Authorization:'Bearer '+c.warehouseToken,'OCS-APIRequest':'true',...headers},body,redirect:'error',signal:AbortSignal.timeout(60000)});
-  if(response.status===401||response.status===403)error(503,'Your AltStack storage connection needs to be refreshed.');
-  if(response.status===507||response.status===413)error(413,'Your shared AltStack storage allowance is full. Remove files in Warehouse or upgrade to Plus.');
+  if(response.status===401||response.status===403)error(503,'Your Cohnsoft storage connection needs to be refreshed.');
+  if(response.status===507||response.status===413)error(413,'Your shared Cohnsoft storage allowance is full. Remove files in Warehouse or upgrade to Plus.');
   if(response.status===412)error(409,'This file changed in Warehouse. Reopen it before saving your changes.');
   if(response.status===404)error(404,'This file or folder was moved or deleted in Warehouse.');
   if(!response.ok&&response.status!==207)error(502,'Warehouse could not complete this request.');
