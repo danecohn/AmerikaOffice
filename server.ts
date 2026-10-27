@@ -42,7 +42,7 @@ export function createOffice(options:any={}){
  const doc=(id:string)=>q('SELECT * FROM documents WHERE id=? AND deleted=0').get(id) as any||fail(404,'Document not found.');
  const access=(id:string,u:any,write=false)=>{const d=doc(id);const role=d.owner===u.id?'owner':(q('SELECT role FROM members WHERE doc=? AND user=?').get(id,u.id) as any)?.role;if(!role||(write&&role==='view'))fail(403,'You do not have permission for this document.');return {...d,role};};
  const owner=(id:string,u:any)=>{const d=access(id,u);if(d.role!=='owner')fail(403,'Only the owner can change sharing or delete this document.');return d;};
- const browserOrigins=new Set([new URL(origin).origin,...(env.BROWSER_ORIGIN_ALIASES||'').split(',').map((v:string)=>v.trim()).filter(Boolean)]);
+ const browserOrigins=new Set([new URL(origin).origin,...(base?['https://office.altstack.org','https://office.amerika.social','https://amerikaoffice-production.up.railway.app']:[]),...(env.BROWSER_ORIGIN_ALIASES||'').split(',').map((v:string)=>v.trim()).filter(Boolean)]);
  const csrf=(req:Request)=>{if(!browserOrigins.has(req.headers.get('origin')||''))fail(403,'Request origin rejected.');};
  const rate=(key:string,max=60)=>{const now=Date.now();for(const[k,v]of rates)if(v.until<now)rates.delete(k);const r=rates.get(key)||{n:0,until:now+3600000};r.n++;rates.set(key,r);if(r.n>max)fail(429,'Too many requests. Please try again later.');};
  const body=async(req:Request,limit=65536)=>{const raw=await req.text();if(Buffer.byteLength(raw)>limit)fail(413,'Request too large.');try{return JSON.parse(raw);}catch{fail(400,'Invalid JSON.');}};
