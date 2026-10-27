@@ -1,0 +1,17 @@
+{
+  "repository": "https://github.com/danecohn/cohnsoftassets",
+  "commit": "30186592391b296d788f29b411d5701ef4f972e3",
+  "sha256": {
+    "LICENSE": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+    "css/goldengate.css": "67fde17b3a59b3ca141f11a8153892ed8f2fa5025ed040ca95e3cb9aec27e988",
+    "css/vigilsans.css": "f35487b1fa51ad038449a59daa0a33444f6b0b48f4900fdc7ca98822e605e040",
+    "logos/vigiltech-glyph-pink.svg": "e27b02b386993598016343832f6b9ad5d33d48e70b040e0d0179e28f61960426",
+    "logos/vigiltech-mark.svg": "d56ebead7c4691b82cfd62db3970fb7a5ad74163f08378946323a135028fe58c",
+    "icons/sheets.png": "cb429849f73ee29d5b56ee0e97f3459d924c12d16d39a9e260df8a448cce0095",
+    "icons/slides.png": "938f473106c3ce098c235791fb527ee23966652b16a096db4735165113007a4e",
+    "icons/write.png": "c23e34a12e08b73b866d14bcd89db62e3f7cdc02ed4024d1f2fa8c19ccd9dbdc",
+    "fonts/OFL.txt": "c985424e4b443932ae3d7d306f39a3f20fcdbdc747c743fbf9bf28d8aeea134c",
+    "fonts/VigilSans-Bold.woff2": "3473a272b16f6c52085ce69646523fec7c4b7ed4a8f16e31ddcf4265aebbf7c2",
+    "fonts/VigilSans-Regular.woff2": "9742fc194977abd82be65c79ca09302034c332cba0c4c32eff1a3a1250df6f33"
+  }
+}

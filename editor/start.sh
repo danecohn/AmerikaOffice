@@ -23,5 +23,5 @@ chown -R postgres:postgres "$store/postgresql"
 rm -f /etc/nginx/sites-enabled/default /etc/nginx/conf.d/default.conf
 # Print nginx's actual error if upstream startup fails.
 sed -i 's/^service nginx start$/service nginx start || { nginx -t; exit 1; }/' /entrypoint.sh
-echo 'Cohnsoft Office: Euro-Office editor with persistent state and upstream notices.'
+echo 'Vigil Office: Euro-Office editor with persistent state and upstream notices.'
 exec /entrypoint.sh "$@"
