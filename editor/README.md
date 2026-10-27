@@ -1,8 +1,8 @@
-# Cohnsoft Office editor service
+# Vigil Office editor service
 
-This builds the actual document editor, independently from the Cohnsoft Office portal. It uses Euro-Office DocumentServer 9.3.6, pinned by image digest, and rebuilds its matching web interface with the upstream-supported `altoffice` theme.
+This builds the actual document editor, independently from the Vigil Office portal. It uses Euro-Office DocumentServer 9.3.6, pinned by image digest, and rebuilds its matching web interface with the upstream-supported `altoffice` theme.
 
-The supplied AltStack logo and Cohnsoft Office title replace product branding. About retains Euro-Office and Ascensio copyrights, history, AGPL notice, warranty disclaimer, licence links and build commits, and adds the downstream source link. ONLYOFFICE remains in historical and legal notices.
+The supplied VigilTech logo and Vigil Office title replace product branding. About retains Euro-Office and Ascensio copyrights, history, AGPL notice, warranty disclaimer, licence links and build commits, and adds the downstream source link. ONLYOFFICE remains in historical and legal notices.
 
 ## Reproducible inputs
 
