@@ -1,0 +1,9 @@
+# Cohnsoft Office production rebrand
+
+The user authorized merging and deploying the complete Cohnsoft rebrand, superseding the earlier pilot/deployment hold. Both portal and editor services must deploy this source; the editor files incorporate the currently deployed `altstack/euro-office-editor` implementation (4db22f1d) without reverting its persistent state or Actions interface.
+
+The portal and editor ship unchanged canonical identity assets and local fonts from cohnsoftassets@752e894f90f1e58e62ae466352cb03c8bfd7d703. The recursive asset bundler includes nested local brand resources. The editor artifact finalizer includes the same fonts/tokens in desktop and mobile entrypoints and refreshes gzip/Brotli outputs. Euro-Office and Ascensio legal notices remain intact.
+
+Preserved: ao_session cookies, account IDs, SQLite schema, AltOffice document/history storage folders, existing API routes, signing secrets, environment names, app IDs, installed desktop profile folder, existing release tags and download artifact names. No user-data migration or secret rotation is performed.
+
+Validation: 22 Office/Drive tests pass (323 assertions), including old document migrations, saves, versions, account isolation and signed callbacks. Portal production bundling passes. Editor finalizer checks pass for all six desktop/mobile entrypoints, preserved upstream notices, local font bytes and compressed artifacts. Railway builds and authenticated production checks are tracked in the PR/rollout report. Desktop source branding is updated; new installers require a separate packaged release verification and are not claimed built by this web deployment.

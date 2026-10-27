@@ -1,7 +1,7 @@
 {
-  "name": "AltOffice",
-  "short_name": "AltOffice",
-  "description": "An Artemis Softworks LLC workspace.",
+  "name": "Cohnsoft Office",
+  "short_name": "Cohnsoft Office",
+  "description": "An Cohnsoft workspace.",
   "id": "/",
   "start_url": "/",
   "display": "standalone",
