@@ -290,18 +290,8 @@ jobs:
         path: src-dist/
     - name: Validate production frontend
       run: npm run validate:frontend:prod
-    - name: Generate macOS icons
-      run: 'echo "::group::generate-icons"
-
-        python3 -m pip install Pillow --quiet --break-system-packages || python3 -m pip install Pillow --quiet
-
-        chmod +x scripts/generate-icons.sh
-
-        bash scripts/generate-icons.sh
-
-        echo "::endgroup::"
-
-        '
+    - name: Verify exact supplied macOS icon
+      run: cmp .altstack-source/desktop/assets/icon.icns src-tauri/icons/icon.icns
     - name: Download x2t macOS binaries
       run: 'chmod +x scripts/get-x2t-ci.sh
 
@@ -496,18 +486,11 @@ jobs:
         path: src-dist/
     - name: Validate production frontend
       run: npm run validate:frontend:prod
-    - name: Generate Linux icons
-      run: 'echo "::group::generate-icons"
-
-        python3 -m pip install Pillow --quiet --break-system-packages || python3 -m pip install Pillow --quiet
-
-        chmod +x scripts/generate-icons.sh
-
-        bash scripts/generate-icons.sh
-
-        echo "::endgroup::"
-
-        '
+    - name: Verify exact supplied Linux icons
+      run: |
+        cmp .altstack-source/desktop/assets/icon-32.png src-tauri/icons/32x32.png
+        cmp .altstack-source/desktop/assets/icon-128.png src-tauri/icons/128x128.png
+        cmp .altstack-source/desktop/assets/icon-256.png src-tauri/icons/256x256.png
     - name: Download x2t Linux binaries
       run: 'chmod +x scripts/get-x2t-ci.sh
 
