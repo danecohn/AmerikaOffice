@@ -1,9 +1,9 @@
 {
   "name": "amerika-office-desktop",
-  "productName": "AltOffice",
+  "productName": "Cohnsoft Office",
   "version": "0.1.0",
-  "description": "AltStack LLC\u2019s desktop client for its hosted collaborative office",
-  "author": "AltStack LLC",
+  "description": "Cohnsoft’s desktop client for its hosted collaborative office",
+  "author": "Cohnsoft",
   "license": "AGPL-3.0-only",
   "main": "main.cjs",
   "scripts": {
@@ -12,7 +12,7 @@
   },
   "build": {
     "appId": "com.amerika.office",
-    "productName": "AltOffice",
+    "productName": "Cohnsoft Office",
     "directories": {
       "output": "release"
     },
@@ -28,7 +28,8 @@
       ],
       "category": "Office",
       "icon": "assets/icon.png",
-      "executableName": "amerika-office"
+      "executableName": "amerika-office",
+      "maintainer": "Cohnsoft"
     },
     "win": {
       "target": [
@@ -55,7 +56,8 @@
         "from": "install-linux.sh",
         "to": "install-linux.sh"
       }
-    ]
+    ],
+    "copyright": "Copyright © 2026 Cohnsoft"
   },
   "devDependencies": {
     "electron": "44.9.2",

@@ -1,10 +1,19 @@
-# AltStack Office
+# Cohnsoft Office
 
-**AltStack LLC · An alternative stack for everyone.**
+<!-- artemis-publisher:start -->
+<img src="public/brand/cohnsoft/logos/mark/cohnsoft-mark.svg" alt="Cohnsoft" width="340">
+
+**A product of Cohnsoft.** Founded by **Demetria Althea Cohn**.
+
+Companion software for macOS, thoughtfully available for Windows and Linux. See the [Cohnsoft identity and design system](public/brand/cohnsoft/BRAND.md). Platform availability varies by product and release.
+<!-- artemis-publisher:end -->
 
 
-AltOffice is the AltStack LLC fork/integration of **Euro-Office** for
-AltStack Desktop. Its document, spreadsheet and presentation apps are Paper, Digits and
+**Cohnsoft · An alternative stack for everyone.**
+
+
+Cohnsoft Office is the Cohnsoft fork/integration of **Euro-Office** for
+Cohnsoft Desktop. Its document, spreadsheet and presentation apps are Paper, Digits and
 Slides. The desktop upstream is pinned in `upstream/euro-office.lock.json`;
 `scripts/checkout-euro-office.py` checks out that source and applies the downstream
 company/product build branding. It does not fetch ONLYOFFICE as the direct upstream.
@@ -24,7 +33,7 @@ change does not migrate a running service or its old volume layout.
 ---
 
 
-AltStack LLC’s self-hosted workspace for documents, spreadsheets and presentations. The charcoal-and-crimson portal uses Euro-Office Document Server and retains the editor’s branding and legal notices.
+Cohnsoft’s self-hosted workspace for documents, spreadsheets and presentations. The Cohnsoft Golden Gate portal uses Euro-Office Document Server and retains the editor’s branding and legal notices.
 
 ## What works
 
@@ -75,4 +84,4 @@ Do not change either signing secret casually while editors are open. Do not scal
 
 ## License and attribution
 
-Portal source: AGPL-3.0-only. See `LICENSE`. ONLYOFFICE is a separate unmodified service with its own AGPL license and notices; its editor branding is retained. Full editor white-labeling requires the appropriate commercial license from ONLYOFFICE. Inter: SIL Open Font License (`public/Inter-OFL.txt`). Templates are original empty files generated for AltStack LLC by `scripts/create-templates.py`.
+Portal source: AGPL-3.0-only. See `LICENSE`. ONLYOFFICE is a separate unmodified service with its own AGPL license and notices; its editor branding is retained. Full editor white-labeling requires the appropriate commercial license from ONLYOFFICE. Inter: SIL Open Font License (`public/Inter-OFL.txt`). Templates are original empty files generated for Cohnsoft by `scripts/create-templates.py`.

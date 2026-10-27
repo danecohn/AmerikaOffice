@@ -20,11 +20,11 @@ test('JWT expiry and wrong secrets are rejected',()=>{expect(()=>verifyJwt(jwt({
 test('document names cannot supply paths',async()=>{const r=await call('/api/documents','POST',{ext:'docx',title:'../../danger\\file'});const d=(await r.json()).document;expect(d.title).not.toContain('/');expect(d.title).not.toContain('\\');});
 
 test('storage follows the verified account plan and counts saved versions',async()=>{
- expect((await(await call('/api/me')).json()).quotaBytes).toBe(800_000_000);
+ expect((await(await call('/api/me')).json()).quotaBytes).toBe(2_000_000_000);
  expect((await(await call('/api/me','GET',undefined,'b')).json()).quotaBytes).toBe(8_000_000_000);
- const d=await make();app.db.query('UPDATE versions SET size=? WHERE doc=?').run(800_000_000,d.id);
+ const d=await make();app.db.query('UPDATE versions SET size=? WHERE doc=?').run(2_000_000_000,d.id);
  expect((await call('/api/documents','POST',{ext:'docx'})).status).toBe(413);
- expect((await(await call('/api/documents')).json()).usedBytes).toBe(800_000_000);
+ expect((await(await call('/api/documents')).json()).usedBytes).toBe(2_000_000_000);
  expect((await call('/api/documents/'+d.id+'/download')).status).toBe(200);
  expect((await call('/api/documents/'+d.id,'DELETE')).status).toBe(200);
  expect((await call('/api/documents','POST',{ext:'docx'})).status).toBe(201);
@@ -32,7 +32,7 @@ test('storage follows the verified account plan and counts saved versions',async
 
 test('Plus can store above the free cap and stops at 8 GB',async()=>{
  const result=await call('/api/documents','POST',{ext:'docx'},'b');expect(result.status).toBe(201);const d=(await result.json()).document;
- app.db.query('UPDATE versions SET size=? WHERE doc=?').run(800_000_000,d.id);
+ app.db.query('UPDATE versions SET size=? WHERE doc=?').run(2_000_000_000,d.id);
  expect((await call('/api/documents','POST',{ext:'docx'},'b')).status).toBe(201);
  app.db.query('UPDATE versions SET size=? WHERE doc=?').run(8_000_000_000,d.id);
  expect((await call('/api/documents','POST',{ext:'docx'},'b')).status).toBe(413);
