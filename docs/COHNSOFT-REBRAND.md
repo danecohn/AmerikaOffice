@@ -1,6 +1,6 @@
 # Cohnsoft Office production rebrand
 
-The user authorized merging and deploying the complete Cohnsoft rebrand, superseding the earlier pilot/deployment hold. Both portal and editor services must deploy this source; the editor files incorporate the currently deployed `altstack/euro-office-editor` implementation (4db22f1d) without reverting its persistent state or Actions interface.
+The user authorized merging and deploying the complete Cohnsoft rebrand, superseding the earlier pilot/deployment hold. Portal and editor deploy the same application changes on service-specific source branches. Root railway.json has precedence over service dashboard Dockerfile settings, so the editor deployment branch retains its editor-specific root build configuration; the editor files incorporate the currently deployed `altstack/euro-office-editor` implementation (4db22f1d) without reverting its persistent state or Actions interface.
 
 The portal and editor ship unchanged canonical identity assets and local fonts from cohnsoftassets@752e894f90f1e58e62ae466352cb03c8bfd7d703. The recursive asset bundler includes nested local brand resources. The editor artifact finalizer includes the same fonts/tokens in desktop and mobile entrypoints and refreshes gzip/Brotli outputs. Euro-Office and Ascensio legal notices remain intact.
 
