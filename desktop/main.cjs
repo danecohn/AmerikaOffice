@@ -4,8 +4,9 @@ const fs=require('node:fs');
 const os=require('node:os');
 const smokeIndex=process.argv.indexOf('--smoke-test');
 if(smokeIndex>=0)app.setPath('userData',fs.mkdtempSync(path.join(os.tmpdir(),'amerika-office-smoke-')));
-const OFFICE='https://amerikaoffice-production.up.railway.app';
+const OFFICE=process.env.ALTSTACK_OFFICE_URL||'https://office.altstack.org';
 const trusted=new Set([new URL(OFFICE).origin,'https://amerikadocs-production.up.railway.app']);
+if(smokeIndex<0)app.setPath('userData',path.join(app.getPath('appData'),'AltOffice'));
 app.setName('Vigil Office');app.setAppUserModelId('com.amerika.office');
 if(process.platform==='linux')app.setDesktopName('amerika-office.desktop');
 let window;
@@ -25,7 +26,7 @@ else{
    popup.webContents.on('will-navigate',(event,url)=>{event.preventDefault();external(url);popup.close();});
   });
   window.webContents.session.on('will-download',(_event,item)=>item.setSaveDialogOptions({title:'Save document',defaultPath:path.join(app.getPath('downloads'),item.getFilename())}));
-  const menu=[...(process.platform==='darwin'?[{label:'Vigil Office',submenu:[{role:'about'},{type:'separator'},{role:'hide'},{role:'quit'}]}]:[]),{label:'File',submenu:[{label:'Your files',click:()=>window.loadURL(OFFICE)},{type:'separator'},{role:process.platform==='darwin'?'close':'quit'}]},{role:'editMenu'},{label:'View',submenu:[{role:'reload'},{role:'resetZoom'},{role:'zoomIn'},{role:'zoomOut'},{role:'togglefullscreen'}]},{label:'Help',submenu:[{label:'Source & licenses',click:()=>external('https://github.com/danecohn/AmerikaOffice')},{label:'Amerika Social',click:()=>external('https://www.amerika.social')}]}];
+  const menu=[...(process.platform==='darwin'?[{label:'Vigil Office',submenu:[{role:'about'},{type:'separator'},{role:'hide'},{role:'quit'}]}]:[]),{label:'File',submenu:[{label:'Your files',click:()=>window.loadURL(OFFICE)},{type:'separator'},{role:process.platform==='darwin'?'close':'quit'}]},{role:'editMenu'},{label:'View',submenu:[{role:'reload'},{role:'resetZoom'},{role:'zoomIn'},{role:'zoomOut'},{role:'togglefullscreen'}]},{label:'Help',submenu:[{label:'Source & licenses',click:()=>external('https://github.com/danecohn/AmerikaOffice')},{label:'VigilTech Social',click:()=>external('https://www.amerika.social')}]}];
   Menu.setApplicationMenu(Menu.buildFromTemplate(menu));
   if(smokeIndex>=0){
    const timeout=setTimeout(()=>app.exit(1),45000);

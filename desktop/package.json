@@ -21,7 +21,7 @@
       "assets/**",
       "LICENSE"
     ],
-    "artifactName": "MakkOffice-${os}-${arch}.${ext}",
+    "artifactName": "AltOffice-${os}-${arch}.${ext}",
     "linux": {
       "target": [
         "tar.gz"

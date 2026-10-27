@@ -162,3 +162,18 @@ main>p{color:var(--vt-label);max-width:68ch}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 @media (prefers-reduced-transparency:reduce){.vt-glass{background:var(--vt-surface)}}
 @media (forced-colors:active){:focus-visible{outline-color:Highlight}button,input{border:1px solid ButtonText}}
+
+/* Ecosystem parity on narrow screens: keep the file filters, storage meter and wrapped tools reachable. */
+@media (max-width:760px){
+ .sidebar{display:flex;flex-wrap:wrap;gap:8px}
+ .sidebar nav{display:flex;order:3;flex:1 0 100%;gap:6px;overflow-x:auto;padding:2px 0}
+ .sidebar .nav{flex:none;width:auto;white-space:nowrap}
+ .sidebar-bottom{display:block;order:4;flex:1 0 100%;padding:8px 6px 0;margin:0}
+ .sidebar-bottom>p,.sidebar-bottom>a,.sidebar-bottom>.engine{display:none}
+ #storage:not([hidden]){display:block}
+ .library-heading{flex-wrap:wrap}
+ .tools{display:flex;flex-wrap:wrap;gap:6px;width:100%}
+ .account{flex-wrap:wrap;justify-content:flex-end;gap:7px}
+ dialog{max-width:calc(100vw - 20px);max-height:85dvh;overflow:auto}
+ .file-main{min-width:0}.file-main b{overflow-wrap:anywhere;white-space:normal}
+}

@@ -76,4 +76,4 @@ Do not change either signing secret casually while editors are open. Do not scal
 
 ## License and attribution
 
-Portal source: AGPL-3.0-only. See `LICENSE`. ONLYOFFICE is a separate unmodified service with its own AGPL license and notices; its editor branding is retained. Full editor white-labeling requires the appropriate commercial license from ONLYOFFICE. Inter: SIL Open Font License (`public/Inter-OFL.txt`). Templates are original empty files generated for Artemis Softworks LLC by `scripts/create-templates.py`.
+Portal source: AGPL-3.0-only. See `LICENSE`. ONLYOFFICE is a separate unmodified service with its own AGPL license and notices; its editor branding is retained. Full editor white-labeling requires the appropriate commercial license from ONLYOFFICE. Vigil Sans: SIL Open Font License (`public/brand/vigiltech/fonts/OFL.txt`). Templates are original empty files generated for VigilTech by `scripts/create-templates.py`.
