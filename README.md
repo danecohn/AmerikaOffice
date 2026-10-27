@@ -1,17 +1,12 @@
-# Makk Office
+<img src="desktop/assets/logo.png" alt="Vigil Office" width="96" align="right">
 
-<!-- artemis-publisher:start -->
-<img src="brand/artemis/artemis-wordmark.svg" alt="Artemis Softworks LLC" width="340">
+# Vigil Office
 
-**A product of Artemis Softworks LLC.** Founded by **Demetria Althea Cohn**.
-
-Companion software for macOS, thoughtfully available for Windows and Linux. See the [Artemis identity and design system](brand/artemis/BRAND.md). Platform availability varies by product and release.
-<!-- artemis-publisher:end -->
+A product of VigilTech, vigiltech.org.
 
 
-Makk Office is the Artemis Softworks LLC fork/integration of **Euro-Office** for
-Makk OS. Its document, spreadsheet and presentation apps are Paper, Digits and
-Slides. The desktop upstream is pinned in `upstream/euro-office.lock.json`;
+Vigil Office is the VigilTech fork/integration of **Euro-Office**. Its document, spreadsheet and presentation apps are Vigil Write, Vigil Sheets and
+Vigil Slides. The desktop upstream is pinned in `upstream/euro-office.lock.json`;
 `scripts/checkout-euro-office.py` checks out that source and applies the downstream
 company/product build branding. It does not fetch ONLYOFFICE as the direct upstream.
 Euro-Office's upstream copyright, attribution and AGPL notices remain intact.
@@ -30,11 +25,11 @@ change does not migrate a running service or its old volume layout.
 ---
 
 
-Artemis Softworks LLC’s self-hosted workspace for documents, spreadsheets and presentations. The charcoal-and-crimson portal uses Euro-Office Document Server and retains the editor’s branding and legal notices.
+VigilTech’s self-hosted workspace for documents, spreadsheets and presentations. The portal follows the VigilTech design system (`public/brand/vigiltech`) and uses Euro-Office Document Server and retains the editor’s branding and legal notices.
 
 ## What works
 
-- Public sign-in and account creation through Amerika Social’s browser approval flow. Office immediately revokes the temporary Social token and maintains its own seven-day session. Social passwords and access tokens are not stored in Office.
+- Public sign-in and account creation through Vigil Social’s browser approval flow. Office immediately revokes the temporary Social token and maintains its own seven-day session. Social passwords and access tokens are not stored in Office.
 - Private DOCX, XLSX and PPTX creation, document uploads, download, rename and deletion.
 - Expiring seven-day invitation links with view or edit access. Accepted membership persists until the owner revokes sharing. Revocation stops future opens; it does not close already-open editors or recall downloaded copies.
 - Live co-editing through a self-hosted Euro-Office Document Server instance, signed editor configs and callbacks, persistent file storage, saved version downloads, and explicit storage limits.
@@ -75,7 +70,7 @@ Only native OOXML files are opened for editing in this first release. Other acce
 
 ## Security and operations
 
-Same-origin changes, HttpOnly/Secure cookies on HTTPS, account and file authorization, HMAC-signed editor configuration, signed callback verification, exact editor-origin download allowlisting, bounded uploads, and storage limits are implemented and tested. Public registration inherits Amerika Social’s CAPTCHA and account rules. Its current browser pairing API applies upstream rate limits to the Office server’s outbound IP; large-scale sign-in traffic needs a dedicated OAuth integration.
+Same-origin changes, HttpOnly/Secure cookies on HTTPS, account and file authorization, HMAC-signed editor configuration, signed callback verification, exact editor-origin download allowlisting, bounded uploads, and storage limits are implemented and tested. Public registration inherits Vigil Social’s CAPTCHA and account rules. Its current browser pairing API applies upstream rate limits to the Office server’s outbound IP; large-scale sign-in traffic needs a dedicated OAuth integration.
 
 Do not change either signing secret casually while editors are open. Do not scale replicas above one or change storage backends without adapting locking and storage. Configure a custom domain by setting `PUBLIC_ORIGIN` to its exact HTTPS origin and attaching its DNS record in Railway.
 

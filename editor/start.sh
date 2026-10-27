@@ -13,5 +13,5 @@ if [ ! -L /var/www/euro-office/Data ]; then
 fi
 chown -R ds:ds "$store"
 (sleep 20; nginx -t; supervisorctl status) &
-echo 'Makk Office editor startup: persistent state and nginx prepared.'
+echo 'Vigil Office editor startup: persistent state and nginx prepared.'
 exec /app/ds/run-document-server.sh "$@"

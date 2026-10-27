@@ -1,9 +1,9 @@
 {
   "name": "amerika-office-desktop",
-  "productName": "Makk Office",
+  "productName": "Vigil Office",
   "version": "0.1.0",
-  "description": "Artemis Softworks LLC’s desktop client for its hosted collaborative office",
-  "author": "Artemis Softworks LLC",
+  "description": "VigilTech’s desktop client for its hosted collaborative office",
+  "author": "VigilTech",
   "license": "AGPL-3.0-only",
   "main": "main.cjs",
   "scripts": {
@@ -12,7 +12,7 @@
   },
   "build": {
     "appId": "com.amerika.office",
-    "productName": "Makk Office",
+    "productName": "Vigil Office",
     "directories": {
       "output": "release"
     },
@@ -29,7 +29,7 @@
       "category": "Office",
       "icon": "assets/icon.png",
       "executableName": "amerika-office",
-      "maintainer": "Artemis Softworks LLC"
+      "maintainer": "VigilTech"
     },
     "win": {
       "target": [
@@ -57,7 +57,7 @@
         "to": "install-linux.sh"
       }
     ],
-    "copyright": "Copyright © 2026 Artemis Softworks LLC"
+    "copyright": "Copyright © 2026 VigilTech"
   },
   "devDependencies": {
     "electron": "44.9.2",
